@@ -1,0 +1,12 @@
+# Variaveis de Ambiente
+.env
+
+# IDES
+.vscode/*
+.idea/
+
+#Sistema Operacional
+
+.DS_Store
+Thumbs.db
+desktop.ini
