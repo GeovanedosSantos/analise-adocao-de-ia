@@ -10,4 +10,8 @@ export default defineConfig({
     babel({ presets: [reactCompilerPreset()] }),
     tailwindcss(),
   ],
+  server: {
+    // Em desenvolvimento, a API do Django roda em outra porta
+    proxy: { '/api': 'http://localhost:8000' },
+  },
 })
