@@ -10,22 +10,33 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
+import os
+from datetime import timedelta
 from pathlib import Path
+
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Variáveis de ambiente do .env na raiz do repositório (o mesmo usado pelo docker-compose)
+load_dotenv(BASE_DIR.parent / '.env')
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
+
+def env_bool(nome, padrao=False):
+    return os.getenv(nome, str(padrao)).strip().lower() in ('1', 'true', 'yes', 'on')
+
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-gdduqus)ruitgsq&e%=rpbjh5zg-#&!-igwe*4rg*)$+5u7%t-'
+SECRET_KEY = os.getenv(
+    'DJANGO_SECRET_KEY',
+    'django-insecure-gdduqus)ruitgsq&e%=rpbjh5zg-#&!-igwe*4rg*)$+5u7%t-',
+)
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = env_bool('DJANGO_DEBUG', True)
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [h for h in os.getenv('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',') if h]
 
 
 # Application definition
@@ -37,6 +48,10 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'rest_framework',
+    'apps.contas',
+    'apps.questionarios',
+    'apps.avaliacoes',
 ]
 
 MIDDLEWARE = [
@@ -47,6 +62,8 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'apps.contas.middleware.AuditoriaMiddleware',
+    'apps.contas.middleware.AdminRlsBypassMiddleware',
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -74,10 +91,18 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': os.getenv('POSTGRES_DB'),
+        'USER': os.getenv('POSTGRES_USER'),
+        'PASSWORD': os.getenv('POSTGRES_PASSWORD'),
+        'HOST': os.getenv('POSTGRES_HOST', 'localhost'),
+        'PORT': os.getenv('POSTGRES_PORT', '5432'),
+        # Cada view roda numa transação: é nela que o tenant do RLS é definido (SET LOCAL)
+        'ATOMIC_REQUESTS': True,
     }
 }
+
+AUTH_USER_MODEL = 'contas.Usuario'
 
 
 # Password validation
@@ -102,9 +127,9 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'pt-br'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'America/Sao_Paulo'
 
 USE_I18N = True
 
@@ -120,3 +145,68 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+# API (Django REST Framework + JWT)
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
+    ),
+}
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=30),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    'TOKEN_OBTAIN_SERIALIZER': 'apps.contas.serializers.TokenEmpresaSerializer',
+}
+
+
+# Segurança em trânsito (RNF03): HTTPS/TLS obrigatório fora do ambiente de desenvolvimento
+
+if not DEBUG:
+    SECURE_SSL_REDIRECT = env_bool('DJANGO_SECURE_SSL_REDIRECT', True)
+    # Necessário quando o TLS termina num proxy reverso (nginx, load balancer)
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = 31536000  # 1 ano
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+
+
+# Log de auditoria (RNF04)
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {'class': 'logging.StreamHandler'},
+    },
+    'loggers': {
+        'auditoria': {'handlers': ['console'], 'level': 'WARNING'},
+    },
+}
+
+
+# Processamento assíncrono (Celery + Redis)
+
+CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', f"redis://localhost:{os.getenv('REDIS_PORT', '6379')}/0")
+CELERY_TASK_ACKS_LATE = True
+CELERY_TASK_TIME_LIMIT = 10 * 60
+
+
+# Motor de IA local (RNF02): a inferência nunca sai da infraestrutura própria
+
+OLLAMA_URL = os.getenv('OLLAMA_URL', 'http://localhost:11434')
+OLLAMA_MODEL = os.getenv('OLLAMA_MODEL', 'llama3.1')
+OLLAMA_TIMEOUT = int(os.getenv('OLLAMA_TIMEOUT', '60'))
+IA_MAX_TENTATIVAS = int(os.getenv('IA_MAX_TENTATIVAS', '3'))
+
+
+# Motor de pontuação (RF05): nota geral mínima (0 a 100) para a empresa ser considerada apta.
+# Valor provisório até a validação do modelo com os especialistas.
+NOTA_CORTE_APTIDAO = float(os.getenv('NOTA_CORTE_APTIDAO', '70'))
