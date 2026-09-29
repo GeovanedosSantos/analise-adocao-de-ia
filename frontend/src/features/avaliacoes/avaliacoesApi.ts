@@ -1,5 +1,5 @@
-import type { ItemRascunho } from '../rascunho/agendador'
-import { guardarToken, requisicao } from './cliente'
+import type { ItemRascunho } from './rascunho/agendador'
+import { requisicao } from '@/api/cliente'
 
 export type TipoPergunta = 'OBJETIVA' | 'DISSERTATIVA'
 
@@ -30,18 +30,6 @@ export type Avaliacao = {
   apta: boolean | null
   respostas: Resposta[]
   pontuacoes: Pontuacao[]
-}
-
-export async function entrar(username: string, password: string) {
-  const { dados } = await requisicao<{ access: string }>('/auth/token/', {
-    metodo: 'POST',
-    corpo: { username, password },
-  })
-  guardarToken(dados.access)
-}
-
-export function sair() {
-  guardarToken(null)
 }
 
 /** Retoma o rascunho da empresa ou abre um novo na versão ativa. */

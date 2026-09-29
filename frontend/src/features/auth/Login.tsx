@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
-import { entrar } from '../api/avaliacoes'
-import { ErroApi } from '../api/cliente'
+import { entrar } from './authApi'
+import { ErroApi } from '@/api/cliente'
 
 export function Login({ aoEntrar }: { aoEntrar: () => void }) {
   const [usuario, setUsuario] = useState('')

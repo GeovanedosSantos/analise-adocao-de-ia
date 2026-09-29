@@ -1,8 +1,8 @@
 import { useCallback, useState } from 'react'
-import { sair } from './api/avaliacoes'
+import { sair } from '@/features/auth/authApi'
 import { lerToken } from './api/cliente'
-import { Login } from './paginas/Login'
-import { PaginaAvaliacao } from './paginas/PaginaAvaliacao'
+import { Login } from '@/features/auth/Login'
+import { PaginaAvaliacao } from '@/features/avaliacoes/PaginaAvaliacao'
 
 function App() {
   const [logado, setLogado] = useState(() => lerToken() !== null)
