@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { iniciarAvaliacao, obterQuestionario, type Avaliacao, type Questionario } from '../api/avaliacoes'
-import { ErroApi } from '../api/cliente'
+import { iniciarAvaliacao, obterQuestionario, type Avaliacao, type Questionario } from './avaliacoesApi'
+import { ErroApi } from '@/api/cliente'
 import { Formulario } from './Formulario'
 import { Resultado } from './Resultado'
 
