@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { consultarStatus, obterAvaliacao, type Avaliacao } from '../api/avaliacoes'
+import { consultarStatus, obterAvaliacao, type Avaliacao } from './avaliacoesApi'
 
 const INTERVALO_POLLING_MS = 3000
 

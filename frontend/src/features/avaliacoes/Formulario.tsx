@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { submeterAvaliacao, type Avaliacao, type Pergunta, type Questionario } from '../api/avaliacoes'
-import { ErroApi } from '../api/cliente'
-import type { ItemRascunho } from '../rascunho/agendador'
-import { useRascunho } from '../rascunho/useRascunho'
+import { submeterAvaliacao, type Avaliacao, type Pergunta, type Questionario } from './avaliacoesApi'
+import { ErroApi } from '@/api/cliente'
+import type { ItemRascunho } from './rascunho/agendador'
+import { useRascunho } from './rascunho/useRascunho'
 
 // Escala de concordância em linguagem acessível a gestores (RNF07)
 const ESCALA = ['Discordo totalmente', 'Discordo', 'Neutro', 'Concordo', 'Concordo totalmente']

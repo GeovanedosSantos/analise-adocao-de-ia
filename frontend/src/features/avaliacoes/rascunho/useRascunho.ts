@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { salvarRascunho } from '../api/avaliacoes'
+import { salvarRascunho } from '../avaliacoesApi'
 import { criarAgendadorRascunho, type EstadoRascunho } from './agendador'
 
 /** Liga o agendador de rascunho ao ciclo de vida do formulário. */
