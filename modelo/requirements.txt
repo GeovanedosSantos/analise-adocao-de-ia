@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+httpx
+pydantic
+numpy
+
+# Não esquecer de baixar o ollama.
+#
+# Para testar o modelo, rodar os comando em sequência:
+# ollama run llama3.2
+# uvicorn ai_model_service:app --reload --port 8000
+#
+# Para executar o teste_modelo.py, abrir e executar em outro terminal.

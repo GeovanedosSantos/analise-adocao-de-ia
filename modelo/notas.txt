@@ -1,0 +1,4 @@
+======================= OTIMIZAÇÕES ============================
+- Trazer um nível de detalhamento maior no plano de ação.
+- Melhorar o nível de detalhamento do diagnóstico.
+- Definir os níveis e/ou os intervalos de pontuação pra cada recomendação.
