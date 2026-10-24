@@ -66,6 +66,14 @@ class VersaoTravadaTests(TestCase):
         with self.assertRaises(ValidationError):
             self.pergunta.save()
 
+    def test_codigo_da_dimensao_de_versao_ja_respondida_nao_pode_mudar(self):
+        self.submeter()
+        dimensao = self.pergunta.dimensao
+        dimensao.codigo = 'outro'
+
+        with self.assertRaises(ValidationError):
+            dimensao.save()
+
     def test_inativar_pergunta_continua_permitido(self):
         self.submeter()
         self.pergunta.ativa = False

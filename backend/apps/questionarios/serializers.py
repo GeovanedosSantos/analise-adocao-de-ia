@@ -14,7 +14,7 @@ class DimensaoSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Dimensao
-        fields = ['id', 'nome', 'ordem', 'perguntas']
+        fields = ['id', 'codigo', 'nome', 'ordem', 'perguntas']
 
 
 class QuestionarioSerializer(serializers.ModelSerializer):

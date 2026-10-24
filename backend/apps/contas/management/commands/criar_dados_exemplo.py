@@ -8,16 +8,16 @@ VERSAO_EXEMPLO = '0.1-exemplo'
 
 # Conteúdo provisório só para desenvolvimento: o modelo de avaliação real ainda será validado
 DIMENSOES = [
-    ('Estratégia', 1, [
+    ('estrategia', 'Estratégia', 1, [
         ('A liderança tem objetivos claros para o uso de IA?', TipoPergunta.OBJETIVA),
         ('Existe orçamento dedicado a iniciativas de IA?', TipoPergunta.OBJETIVA),
     ]),
-    ('Dados', 2, [
+    ('dados', 'Dados', 2, [
         ('Os dados da empresa são catalogados e acessíveis?', TipoPergunta.OBJETIVA),
         ('Há regras de governança e qualidade de dados?', TipoPergunta.OBJETIVA),
         ('Descreva onde ficam os principais dados da empresa.', TipoPergunta.DISSERTATIVA),
     ]),
-    ('Pessoas', 1, [
+    ('pessoas', 'Pessoas', 1, [
         ('A equipe recebeu capacitação em IA?', TipoPergunta.OBJETIVA),
         ('Como a equipe reage à automação de tarefas?', TipoPergunta.DISSERTATIVA),
     ]),
@@ -39,8 +39,10 @@ class Command(BaseCommand):
 
         questionario, criado = Questionario.objects.get_or_create(versao=VERSAO_EXEMPLO)
         if criado:
-            for ordem, (nome, peso, perguntas) in enumerate(DIMENSOES, start=1):
-                dimensao = Dimensao.objects.create(questionario=questionario, nome=nome, peso=peso, ordem=ordem)
+            for ordem, (codigo, nome, peso, perguntas) in enumerate(DIMENSOES, start=1):
+                dimensao = Dimensao.objects.create(
+                    questionario=questionario, codigo=codigo, nome=nome, peso=peso, ordem=ordem,
+                )
                 for ordem_pergunta, (texto, tipo) in enumerate(perguntas, start=1):
                     Pergunta.objects.create(dimensao=dimensao, texto=texto, tipo=tipo, peso=1, ordem=ordem_pergunta)
         if not Questionario.objects.filter(ativo=True).exists():
