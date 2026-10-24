@@ -28,6 +28,9 @@ class Avaliacao(models.Model):
     nota_geral = models.FloatField(null=True, blank=True)
     nivel_maturidade = models.PositiveSmallIntegerField(null=True, blank=True)
     apta = models.BooleanField(null=True, blank=True)
+    delta_nota_geral = models.FloatField(
+        null=True, blank=True, help_text='Diferença em pontos para a nota geral da avaliação anterior (RF13).',
+    )
 
     class Meta:
         ordering = ['-data_inicio']
@@ -49,7 +52,10 @@ class PontuacaoDimensao(models.Model):
     dimensao = models.ForeignKey(Dimensao, on_delete=models.PROTECT, related_name='+')
     nota = models.FloatField(help_text='De 0 a 100.')
     prioritaria = models.BooleanField(default=False)
-    delta_percentual = models.FloatField(null=True, blank=True)  # calculado na Sprint 3 (RF13)
+    delta_percentual = models.FloatField(
+        null=True, blank=True,
+        help_text='Diferença em pontos percentuais para a mesma dimensão (mesmo código) na avaliação anterior (RF13).',
+    )
 
     class Meta:
         ordering = ['dimensao__ordem']

@@ -22,5 +22,5 @@ class AvaliacaoAdmin(admin.ModelAdmin):
     list_display = ['empresa', 'questionario', 'status', 'nota_geral', 'apta', 'data_inicio']
     list_filter = ['status', 'empresa', 'questionario']
     readonly_fields = ['empresa', 'questionario', 'status', 'data_inicio', 'data_fim', 'nota_geral',
-                       'nivel_maturidade', 'apta']
+                       'nivel_maturidade', 'apta', 'delta_nota_geral']
     inlines = [PontuacaoInline, RespostaInline]
