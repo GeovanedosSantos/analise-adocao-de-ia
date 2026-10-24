@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { iniciarAvaliacao, obterQuestionario, type Avaliacao, type Questionario } from './avaliacoesApi'
 import { ErroApi } from '@/api/cliente'
+import { Alerta } from '@/components/Alerta'
 import { Formulario } from './Formulario'
 import { Resultado } from './Resultado'
 
@@ -29,9 +30,15 @@ export function PaginaAvaliacao({ aoExpirarSessao }: { aoExpirarSessao: () => vo
     }
   }, [aoExpirarSessao])
 
-  if (erro) return <p role="alert" className="p-6 text-red-600">{erro}</p>
+  if (erro) {
+    return (
+      <div className="p-6">
+        <Alerta tipo="erro">{erro}</Alerta>
+      </div>
+    )
+  }
   if (!carga) return <p className="p-6">Carregando…</p>
-  if (carga.avaliacao.status !== 'DRAFT') return <Resultado avaliacao={carga.avaliacao} />
+  if (carga.avaliacao.status !== 'DRAFT') return <Resultado avaliacao={carga.avaliacao} aoExpirarSessao={aoExpirarSessao} />
   return (
     <Formulario
       avaliacao={carga.avaliacao}

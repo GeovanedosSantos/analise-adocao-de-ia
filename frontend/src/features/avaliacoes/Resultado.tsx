@@ -1,25 +1,35 @@
 import { useEffect, useState } from 'react'
+import { ErroApi } from '@/api/cliente'
+import { Alerta } from '@/components/Alerta'
+import { Botao } from '@/components/Botao'
+import { acompanharProcessamento } from './acompanhamento'
 import { consultarStatus, obterAvaliacao, type Avaliacao } from './avaliacoesApi'
 
-const INTERVALO_POLLING_MS = 3000
+type Props = { avaliacao: Avaliacao; aoExpirarSessao: () => void }
 
-export function Resultado({ avaliacao: inicial }: { avaliacao: Avaliacao }) {
+export function Resultado({ avaliacao: inicial, aoExpirarSessao }: Props) {
   const [avaliacao, setAvaliacao] = useState(inicial)
+  const [esgotado, setEsgotado] = useState(false)
+  const [rodada, setRodada] = useState(0)
   const processando = avaliacao.status === 'PROCESSANDO_IA'
 
-  // A análise das respostas abertas roda no Celery: consulta o status até terminar (RNF06)
+  // A análise das respostas abertas roda no Celery: consulta o status até terminar ou até o limite
   useEffect(() => {
     if (!processando) return
-    const timer = setInterval(async () => {
-      try {
+    return acompanharProcessamento(
+      async () => {
         const { status } = await consultarStatus(avaliacao.id)
-        if (status !== 'PROCESSANDO_IA') setAvaliacao(await obterAvaliacao(avaliacao.id))
-      } catch {
-        // Falha pontual de rede: tenta no próximo ciclo
-      }
-    }, INTERVALO_POLLING_MS)
-    return () => clearInterval(timer)
-  }, [avaliacao.id, processando])
+        return status === 'PROCESSANDO_IA' ? null : obterAvaliacao(avaliacao.id)
+      },
+      { aoTerminar: setAvaliacao, aoEsgotar: () => setEsgotado(true), aoFalhar: aoExpirarSessao },
+      { ehDefinitivo: (erro) => erro instanceof ErroApi && erro.status === 401 },
+    )
+  }, [avaliacao.id, processando, rodada, aoExpirarSessao])
+
+  function verificarDeNovo() {
+    setEsgotado(false)
+    setRodada((r) => r + 1)
+  }
 
   const analises = avaliacao.respostas.filter((r) => r.feedback_ia)
 
@@ -42,11 +52,21 @@ export function Resultado({ avaliacao: inicial }: { avaliacao: Avaliacao }) {
         ))}
       </section>
 
-      {processando && <p aria-live="polite">A IA está analisando as respostas abertas…</p>}
+      {processando && !esgotado && <Alerta>A IA está analisando as respostas abertas…</Alerta>}
+      {processando && esgotado && (
+        <Alerta
+          tipo="aviso"
+          titulo="A análise está demorando"
+          acao={<Botao variante="secundario" onClick={verificarDeNovo}>Verificar de novo</Botao>}
+        >
+          A IA está levando mais tempo que o normal para analisar as respostas abertas. As notas acima já são válidas;
+          verifique de novo agora ou mais tarde.
+        </Alerta>
+      )}
       {avaliacao.status === 'ERRO_PROCESSAMENTO' && (
-        <p role="alert" className="text-red-600">
+        <Alerta tipo="aviso" titulo="Análise das respostas abertas indisponível">
           Não foi possível analisar as respostas abertas. As notas acima continuam válidas.
-        </p>
+        </Alerta>
       )}
       {analises.length > 0 && (
         <section className="flex flex-col gap-2">

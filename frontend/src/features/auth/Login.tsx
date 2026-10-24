@@ -1,6 +1,8 @@
 import { useState, type FormEvent } from 'react'
 import { entrar } from './authApi'
 import { ErroApi } from '@/api/cliente'
+import { Alerta } from '@/components/Alerta'
+import { Botao } from '@/components/Botao'
 
 export function Login({ aoEntrar }: { aoEntrar: () => void }) {
   const [usuario, setUsuario] = useState('')
@@ -46,14 +48,10 @@ export function Login({ aoEntrar }: { aoEntrar: () => void }) {
           required
         />
       </label>
-      {erro && <p role="alert" className="text-sm text-red-600">{erro}</p>}
-      <button
-        type="submit"
-        disabled={enviando}
-        className="rounded bg-destaque px-4 py-2 font-medium text-white disabled:opacity-60"
-      >
+      {erro && <Alerta tipo="erro">{erro}</Alerta>}
+      <Botao type="submit" disabled={enviando}>
         {enviando ? 'Entrando…' : 'Entrar'}
-      </button>
+      </Botao>
     </form>
   )
 }

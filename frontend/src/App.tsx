@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react'
 import { sair } from '@/features/auth/authApi'
 import { lerToken } from './api/cliente'
+import { Botao } from '@/components/Botao'
 import { Login } from '@/features/auth/Login'
 import { PaginaAvaliacao } from '@/features/avaliacoes/PaginaAvaliacao'
 
@@ -20,9 +21,9 @@ function App() {
           <p className="mb-6">Avaliação de prontidão organizacional para adoção de IA em empresas.</p>
         </div>
         {logado && (
-          <button type="button" onClick={encerrarSessao} className="text-sm underline">
+          <Botao variante="link" onClick={encerrarSessao} className="text-sm">
             Sair
-          </button>
+          </Botao>
         )}
       </header>
       {logado ? <PaginaAvaliacao aoExpirarSessao={encerrarSessao} /> : <Login aoEntrar={() => setLogado(true)} />}
