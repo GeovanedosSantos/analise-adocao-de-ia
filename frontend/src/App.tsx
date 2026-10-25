@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react'
 import { Navigate, Outlet, Route, Routes, useLocation } from 'react-router'
 import { sair } from '@/features/auth/authApi'
 import { lerToken } from './api/cliente'
-import { Cabecalho } from '@/components/Cabecalho'
+import { BarraLateral } from '@/components/BarraLateral'
 import { Login } from '@/features/auth/Login'
 import { PaginaQuestionario } from '@/features/avaliacoes/PaginaQuestionario'
 import { PaginaResultado, PaginaUltimoResultado } from '@/features/avaliacoes/PaginaResultado'
@@ -45,11 +45,7 @@ function RotaLogin({ logado, aoEntrar }: { logado: boolean; aoEntrar: () => void
     const de = (state as EstadoLogin)?.de
     return <Navigate to={de?.startsWith('/') ? de : PAGINA_INICIAL} replace />
   }
-  return (
-    <main className="flex flex-1 items-center justify-center p-6">
-      <Login aoEntrar={aoEntrar} />
-    </main>
-  )
+  return <Login aoEntrar={aoEntrar} />
 }
 
 /** Sem login (ou com a sessão expirada): vai para /login lembrando a página atual. */
@@ -60,9 +56,9 @@ function IrParaLogin() {
 
 function LayoutLogado({ aoSair }: { aoSair: () => void }) {
   return (
-    <div className="flex flex-1 flex-col">
-      <Cabecalho aoSair={aoSair} />
-      <main className="flex flex-1 flex-col">
+    <div className="flex flex-1 flex-col lg:flex-row">
+      <BarraLateral aoSair={aoSair} />
+      <main className="flex min-w-0 flex-1 flex-col">
         <Outlet />
       </main>
     </div>
