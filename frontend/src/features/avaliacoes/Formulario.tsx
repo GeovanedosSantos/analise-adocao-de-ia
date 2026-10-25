@@ -4,6 +4,7 @@ import { ErroApi } from '@/api/cliente'
 import { Alerta } from '@/components/Alerta'
 import { Botao } from '@/components/Botao'
 import { Modal } from '@/components/Modal'
+import { Cartao, Pagina } from '@/components/Pagina'
 import type { ItemRascunho } from './rascunho/agendador'
 import { useRascunho } from './rascunho/useRascunho'
 
@@ -51,33 +52,69 @@ export function Formulario({ avaliacao, questionario, aoSubmeter }: Props) {
     }
   }
 
+  const respondidas = objetivas.length - faltam
+  const progresso = objetivas.length ? (respondidas / objetivas.length) * 100 : 0
+
   return (
-    <div className="flex flex-col gap-8 p-6">
-      <div className="flex items-baseline justify-between gap-4">
-        <p className="text-sm">Questionário v{questionario.versao}</p>
-        <p className="text-sm" aria-live="polite">{estado && TEXTO_ESTADO[estado]}</p>
-      </div>
-
-      <div className="flex flex-col gap-10 rounded-xl border border-borda bg-superficie p-6">
-        {questionario.dimensoes.map((dimensao) => (
-          <section key={dimensao.id} className="flex flex-col gap-6">
-            <h2>{dimensao.nome}</h2>
-            {dimensao.perguntas.map((pergunta) => (
-              <CampoPergunta
-                key={pergunta.id}
-                pergunta={pergunta}
-                valor={valores[pergunta.id]}
-                aoResponder={responder}
-              />
-            ))}
-          </section>
+    <>
+      <Pagina
+        titulo="Questionário"
+        descricao={
+          <>
+            Versão {questionario.versao} · as respostas são salvas automaticamente
+            <span aria-live="polite" className="ml-2 font-medium text-titulo">
+              {estado && TEXTO_ESTADO[estado]}
+            </span>
+          </>
+        }
+      >
+        {questionario.dimensoes.map((dimensao, i) => (
+          <Cartao key={dimensao.id} titulo={`${i + 1}. ${dimensao.nome}`}>
+            <div className="flex flex-col gap-8">
+              {dimensao.perguntas.map((pergunta) => (
+                <CampoPergunta
+                  key={pergunta.id}
+                  pergunta={pergunta}
+                  valor={valores[pergunta.id]}
+                  aoResponder={responder}
+                />
+              ))}
+            </div>
+          </Cartao>
         ))}
-      </div>
+        {erro && <Alerta tipo="erro">{erro}</Alerta>}
+      </Pagina>
 
-      {erro && <Alerta tipo="erro">{erro}</Alerta>}
-      <Botao onClick={() => setConfirmando(true)} disabled={faltam > 0} className="self-center">
-        {faltam > 0 ? `Faltam ${faltam} perguntas objetivas` : 'Enviar avaliação'}
-      </Botao>
+      {/* Rodapé fixo: progresso e envio sempre à mão, sem rolar até o fim */}
+      <div className="sticky bottom-0 border-t border-borda bg-superficie/95 backdrop-blur-sm">
+        <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center gap-x-6 gap-y-3 px-4 py-3 sm:px-6 lg:px-8">
+          <div className="flex min-w-48 flex-1 flex-col gap-1.5">
+            <p className="text-sm">
+              <span className="font-semibold text-titulo tabular-nums">
+                {respondidas} de {objetivas.length}
+              </span>{' '}
+              perguntas objetivas respondidas
+            </p>
+            <div
+              className="h-1.5 overflow-hidden rounded-full bg-suave"
+              role="progressbar"
+              aria-label="Perguntas objetivas respondidas"
+              aria-valuenow={respondidas}
+              aria-valuemin={0}
+              aria-valuemax={objetivas.length}
+            >
+              {/* transform em vez de width: anima só na GPU */}
+              <div
+                className="h-full origin-left rounded-full bg-destaque transition-transform duration-200 ease-saida"
+                style={{ transform: `scaleX(${progresso / 100})` }}
+              />
+            </div>
+          </div>
+          <Botao onClick={() => setConfirmando(true)} disabled={faltam > 0}>
+            {faltam > 0 ? `Faltam ${faltam}` : 'Enviar avaliação'}
+          </Botao>
+        </div>
+      </div>
 
       <Modal
         aberto={confirmando}
@@ -99,7 +136,7 @@ export function Formulario({ avaliacao, questionario, aoSubmeter }: Props) {
           abertas pode levar alguns minutos.
         </p>
       </Modal>
-    </div>
+    </>
   )
 }
 
@@ -108,10 +145,10 @@ type PropsCampo = { pergunta: Pergunta; valor: Valores[string] | undefined; aoRe
 function CampoPergunta({ pergunta, valor, aoResponder }: PropsCampo) {
   if (pergunta.tipo === 'DISSERTATIVA') {
     return (
-      <label className="flex flex-col gap-2">
-        <span className="text-titulo">{pergunta.texto}</span>
+      <label className="flex flex-col gap-3">
+        <span className="font-medium text-titulo">{pergunta.texto}</span>
         <textarea
-          className="min-h-28 rounded border border-borda bg-superficie p-3 text-titulo"
+          className="min-h-28 rounded-lg border border-borda bg-superficie p-3 text-base text-titulo shadow-xs outline-none focus:border-destaque focus:ring-3 focus:ring-destaque/20 sm:text-sm"
           maxLength={5000}
           value={valor?.texto_aberto ?? ''}
           onChange={(e) => aoResponder({ pergunta: pergunta.id, texto_aberto: e.target.value })}
@@ -120,19 +157,21 @@ function CampoPergunta({ pergunta, valor, aoResponder }: PropsCampo) {
     )
   }
   return (
-    <fieldset className="flex flex-col gap-2">
-      <legend className="mb-2 text-titulo">{pergunta.texto}</legend>
+    <fieldset className="flex flex-col">
+      <legend className="mb-3 font-medium text-titulo">{pergunta.texto}</legend>
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-5">
         {ESCALA.map((rotulo, i) => (
+          // O radio fica visível (foco e leitor de tela nativos); o cartão inteiro é a área de clique
           <label
             key={rotulo}
-            className="flex cursor-pointer items-center gap-2 rounded border border-borda px-3 py-2 text-sm has-checked:border-destaque has-checked:bg-destaque-fundo"
+            className="selecionavel flex cursor-pointer touch-manipulation items-center gap-2.5 rounded-lg border border-borda px-3 py-2.5 text-sm text-titulo transition-[background-color,border-color,translate] duration-150 ease-saida hover:-translate-y-0.5 hover:bg-suave has-checked:border-destaque has-checked:bg-destaque-fundo has-checked:font-medium has-focus-visible:outline-2 has-focus-visible:outline-destaque"
           >
             <input
               type="radio"
               name={pergunta.id}
               checked={valor?.valor_objetivo === i + 1}
               onChange={() => aoResponder({ pergunta: pergunta.id, valor_objetivo: i + 1 })}
+              className="size-4 shrink-0"
             />
             {rotulo}
           </label>
