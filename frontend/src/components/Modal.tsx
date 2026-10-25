@@ -30,7 +30,8 @@ export function Modal({ aberto, titulo, aoFechar, acoes, children }: Props) {
         evento.preventDefault()
         aoFechar()
       }}
-      className="m-auto w-[calc(100%-2rem)] max-w-md rounded-xl border border-borda bg-superficie p-6 text-texto shadow-xl backdrop:bg-black/50"
+      // Entra com fade + leve aumento (de 0,96, nunca de 0); só opacity e transform, 200 ms ease-out
+      className="m-auto w-[calc(100%-2rem)] max-w-md rounded-xl border border-borda bg-superficie p-6 text-texto shadow-xl transition-[opacity,scale,display,overlay] transition-discrete duration-200 ease-saida backdrop:bg-black/50 not-open:scale-96 not-open:opacity-0 starting:open:scale-96 starting:open:opacity-0"
     >
       <div className="flex flex-col gap-4">
         <h2 id={idTitulo}>{titulo}</h2>

@@ -4,12 +4,13 @@ import { tv, type VariantProps } from 'tailwind-variants'
 
 const botao = tv({
   // inline-flex alinha ícone e texto quando o botão tem um ícone do lucide-react
-  base: 'inline-flex items-center justify-center gap-2 font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-destaque disabled:cursor-not-allowed disabled:opacity-60',
+  // Pressionar encolhe 3% (só transform, roda na GPU); desabilitado não reage
+  base: 'inline-flex touch-manipulation items-center justify-center gap-2 text-sm font-medium transition-[transform,background-color] duration-150 ease-saida focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-destaque enabled:active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60',
   variants: {
     variante: {
-      primario: 'rounded bg-destaque px-4 py-2 text-sobre-destaque',
-      secundario: 'rounded border border-borda px-4 py-2 text-titulo',
-      link: 'rounded-sm text-destaque underline underline-offset-2',
+      primario: 'h-10 rounded-lg bg-destaque px-4 text-sobre-destaque shadow-sm hover:bg-destaque/90',
+      secundario: 'h-10 rounded-lg border border-borda bg-superficie px-4 text-titulo shadow-xs hover:bg-suave',
+      link: 'rounded-sm text-destaque underline-offset-4 hover:underline active:scale-100',
     },
   },
   defaultVariants: { variante: 'primario' },

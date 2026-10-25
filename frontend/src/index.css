@@ -1,40 +1,52 @@
 @import "tailwindcss";
 
+/* O tema vem do atributo data-theme no <html> (definido no index.html, segue o sistema até a pessoa escolher) */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
 @theme inline {
   --color-texto: var(--text);
   --color-titulo: var(--text-h);
   --color-fundo: var(--bg);
   --color-superficie: var(--surface);
+  --color-suave: var(--muted);
   --color-borda: var(--border);
   --color-destaque: var(--accent);
   --color-destaque-fundo: var(--accent-bg);
   --color-sobre-destaque: var(--on-accent);
+  --ease-saida: cubic-bezier(0.23, 1, 0.32, 1);
 }
 
+/* Paleta baseada no tema Harbor Blue (21st.dev), adaptada aos nomes de token do projeto */
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  /* Fundo da página levemente acinzentado; seções (cabeçalho, cartões, modal) em --surface por cima */
-  --bg: #f4f6f9;
+  --text: #64748b;
+  --text-h: #0f172a;
+  /* Fundo da página levemente acinzentado; barra lateral, cartões e modal em --surface por cima */
+  --bg: #f8fafc;
   --surface: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  /* Azul primário: contraste de 4,7:1 com o texto branco dos botões */
-  --accent: #1d72d8;
-  --accent-bg: rgba(29, 114, 216, 0.1);
-  --accent-border: rgba(29, 114, 216, 0.5);
+  --muted: #f1f5f9;
+  --border: #e2e8f0;
+  /* Azul primário: 9,3:1 com o texto branco dos botões e como texto sobre --surface */
+  --accent: #194391;
+  --accent-bg: #dce6f9;
   --on-accent: #fff;
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+  /* Séries dos gráficos (atual × anterior): par validado para daltonismo contra --surface */
+  --serie-atual: #4169e1;
+  --serie-anterior: #c8641a;
+  /* Uma cor fixa por dimensão na linha do tempo, na ordem das dimensões (paleta categórica validada) */
+  --dim-1: #2a78d6;
+  --dim-2: #eb6834;
+  --dim-3: #1baf7a;
+  --dim-4: #eda100;
+  --dim-5: #e87ba4;
+  --dim-6: #008300;
+  --dim-7: #6250d6;
+  --dim-8: #e34948;
 
+  /* Fonte do sistema: nada para baixar antes de mostrar a página */
   --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
 
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
+  font: 16px/150% var(--sans);
+  color-scheme: light;
   color: var(--text);
   background: var(--bg);
   accent-color: var(--accent);
@@ -42,33 +54,35 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
+  -webkit-tap-highlight-color: transparent;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --surface: #1e2028;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    /* Azul mais claro no escuro: o texto dos botões passa a ser escuro (7,4:1) */
-    --accent: #60a5fa;
-    --accent-bg: rgba(96, 165, 250, 0.149);
-    --accent-border: rgba(96, 165, 250, 0.502);
-    --on-accent: #0b1220;
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --text: #94a3b8;
+  --text-h: #f8fafc;
+  --bg: #0f172a;
+  --surface: #1e293b;
+  --muted: #253247;
+  --border: #334155;
+  /* Azul mais claro no escuro: o texto dos botões passa a ser escuro (7,2:1) */
+  --accent: #7ca3f5;
+  --accent-bg: #253a63;
+  --on-accent: #0f172a;
+  --serie-atual: #4a8ee6;
+  --serie-anterior: #d47a2c;
+  --dim-1: #3987e5;
+  --dim-2: #d95926;
+  --dim-3: #199e70;
+  --dim-4: #c98500;
+  --dim-5: #d55181;
+  --dim-6: #008300;
+  --dim-7: #9085e9;
+  --dim-8: #e66767;
 }
 
 #root {
-  min-height: 100svh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
@@ -86,30 +100,146 @@
 
   h1,
   h2 {
-    font-family: var(--heading);
-    font-weight: 500;
+    font-weight: 600;
     color: var(--text-h);
+    margin: 0;
+    text-wrap: balance;
   }
 
+  /* Título da página */
   h1 {
-    font-size: 56px;
-    letter-spacing: -1.68px;
-    margin: 32px 0;
-    @media (max-width: 1024px) {
-      font-size: 36px;
-      margin: 20px 0;
-    }
+    font-size: 26px;
+    line-height: 120%;
+    letter-spacing: -0.4px;
   }
+  /* Título de cartão ou seção */
   h2 {
-    font-size: 24px;
-    line-height: 118%;
-    letter-spacing: -0.24px;
-    margin: 0 0 8px;
-    @media (max-width: 1024px) {
-      font-size: 20px;
-    }
+    font-size: 17px;
+    line-height: 130%;
+    letter-spacing: -0.1px;
   }
   p {
     margin: 0;
+  }
+}
+
+/*
+ * Luz que segue o cursor dentro dos cartões. As variáveis não são herdadas (inherits: false):
+ * mudar a posição repinta só o fundo do cartão, sem recalcular o estilo dos filhos.
+ */
+@property --luz-x {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: -1000px;
+}
+@property --luz-y {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: -1000px;
+}
+
+@layer components {
+  /* Cartão padrão do app: sobe 2px e acende a borda no hover; a luz é posicionada por src/luz.ts */
+  .cartao {
+    position: relative;
+    border: 1px solid var(--border);
+    border-radius: 1rem;
+    background-color: var(--surface);
+    background-image: radial-gradient(
+      380px circle at var(--luz-x) var(--luz-y),
+      color-mix(in srgb, var(--serie-atual) 9%, transparent),
+      transparent 70%
+    );
+    box-shadow: 0 1px 2px rgb(15 23 42 / 0.05);
+    transition:
+      translate 200ms var(--ease-saida),
+      box-shadow 200ms var(--ease-saida),
+      border-color 200ms var(--ease-saida);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .cartao:hover {
+      border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+      box-shadow: 0 12px 32px -12px rgb(15 23 42 / 0.22);
+    }
+  }
+  @media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+    .cartao:hover {
+      translate: 0 -2px;
+    }
+  }
+  [data-theme="dark"] .cartao {
+    background-image: radial-gradient(
+      380px circle at var(--luz-x) var(--luz-y),
+      color-mix(in srgb, var(--serie-atual) 16%, transparent),
+      transparent 70%
+    );
+  }
+  [data-theme="dark"] .cartao:hover {
+    box-shadow: 0 12px 32px -12px rgb(0 0 0 / 0.6);
+  }
+
+  /* Item que pode ser escolhido (lista de dimensões, linhas do histórico): dá um pulinho ao ser selecionado */
+  @media (prefers-reduced-motion: no-preference) {
+    .selecionavel[aria-pressed="true"],
+    .selecionavel:has(input:checked) {
+      animation: saltar 260ms var(--ease-saida);
+    }
+  }
+}
+
+@keyframes saltar {
+  0% { scale: 1; }
+  40% { scale: 1.025; }
+  100% { scale: 1; }
+}
+
+/* Animações da mascote do login (só transform e opacity) */
+@keyframes flutuar {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+@keyframes piscar {
+  0%, 92%, 100% { transform: scaleY(1); }
+  95% { transform: scaleY(0.1); }
+}
+@keyframes pulsar {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+@keyframes tremer {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-6px); }
+  40%, 80% { transform: translateX(6px); }
+}
+
+/* Tabela de dados (dashboard, histórico, comparação). Utilitários do Tailwind nas células sobrescrevem */
+@layer components {
+  .tabela {
+    width: 100%;
+    text-align: left;
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+    border-collapse: collapse;
+
+    & th {
+      padding: 10px 16px 10px 0;
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      white-space: nowrap;
+      border-bottom: 1px solid var(--border);
+    }
+    & td {
+      padding: 12px 16px 12px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    & tbody tr:last-child td {
+      border-bottom: 0;
+    }
+    & td:first-child {
+      color: var(--text-h);
+      font-weight: 500;
+    }
   }
 }

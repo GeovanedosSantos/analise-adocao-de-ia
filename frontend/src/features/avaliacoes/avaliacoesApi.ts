@@ -18,7 +18,15 @@ export type Resposta = {
   feedback_ia: { analise_qualitativa: string; pontos_fortes: string[]; riscos: string[] } | null
 }
 
-export type Pontuacao = { dimensao: string; dimensao_nome: string; nota: number; prioritaria: boolean }
+export type Pontuacao = {
+  dimensao: string
+  dimensao_codigo: string
+  dimensao_nome: string
+  nota: number
+  prioritaria: boolean
+  /** Diferença em pontos para a mesma dimensão na avaliação anterior; null se não houver anterior. */
+  delta_percentual: number | null
+}
 
 export type Avaliacao = {
   id: string
@@ -30,6 +38,8 @@ export type Avaliacao = {
   nota_geral: number | null
   nivel_maturidade: number | null
   apta: boolean | null
+  /** Diferença em pontos para a nota geral da avaliação anterior; null na primeira. */
+  delta_nota_geral: number | null
   respostas: Resposta[]
   pontuacoes: Pontuacao[]
 }
