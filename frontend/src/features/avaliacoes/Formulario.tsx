@@ -1,6 +1,9 @@
 import { useState } from 'react'
 import { submeterAvaliacao, type Avaliacao, type Pergunta, type Questionario } from './avaliacoesApi'
 import { ErroApi } from '@/api/cliente'
+import { Alerta } from '@/components/Alerta'
+import { Botao } from '@/components/Botao'
+import { Modal } from '@/components/Modal'
 import type { ItemRascunho } from './rascunho/agendador'
 import { useRascunho } from './rascunho/useRascunho'
 
@@ -18,6 +21,7 @@ export function Formulario({ avaliacao, questionario, aoSubmeter }: Props) {
   const [valores, setValores] = useState<Valores>(() =>
     Object.fromEntries(avaliacao.respostas.map((r) => [r.pergunta, r])),
   )
+  const [confirmando, setConfirmando] = useState(false)
   const [enviando, setEnviando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
 
@@ -36,6 +40,7 @@ export function Formulario({ avaliacao, questionario, aoSubmeter }: Props) {
       await agendador.descarregar()
       aoSubmeter(await submeterAvaliacao(avaliacao.id))
     } catch (e) {
+      setConfirmando(false)
       setErro(
         e instanceof ErroApi && e.status === 400
           ? 'Responda todas as perguntas objetivas antes de enviar.'
@@ -53,29 +58,47 @@ export function Formulario({ avaliacao, questionario, aoSubmeter }: Props) {
         <p className="text-sm" aria-live="polite">{estado && TEXTO_ESTADO[estado]}</p>
       </div>
 
-      {questionario.dimensoes.map((dimensao) => (
-        <section key={dimensao.id} className="flex flex-col gap-6">
-          <h2>{dimensao.nome}</h2>
-          {dimensao.perguntas.map((pergunta) => (
-            <CampoPergunta
-              key={pergunta.id}
-              pergunta={pergunta}
-              valor={valores[pergunta.id]}
-              aoResponder={responder}
-            />
-          ))}
-        </section>
-      ))}
+      <div className="flex flex-col gap-10 rounded-xl border border-borda bg-superficie p-6">
+        {questionario.dimensoes.map((dimensao) => (
+          <section key={dimensao.id} className="flex flex-col gap-6">
+            <h2>{dimensao.nome}</h2>
+            {dimensao.perguntas.map((pergunta) => (
+              <CampoPergunta
+                key={pergunta.id}
+                pergunta={pergunta}
+                valor={valores[pergunta.id]}
+                aoResponder={responder}
+              />
+            ))}
+          </section>
+        ))}
+      </div>
 
-      {erro && <p role="alert" className="text-red-600">{erro}</p>}
-      <button
-        type="button"
-        onClick={submeter}
-        disabled={enviando || faltam > 0}
-        className="self-start rounded bg-destaque px-5 py-2 font-medium text-white disabled:opacity-60"
+      {erro && <Alerta tipo="erro">{erro}</Alerta>}
+      <Botao onClick={() => setConfirmando(true)} disabled={faltam > 0} className="self-center">
+        {faltam > 0 ? `Faltam ${faltam} perguntas objetivas` : 'Enviar avaliação'}
+      </Botao>
+
+      <Modal
+        aberto={confirmando}
+        titulo="Enviar a avaliação?"
+        aoFechar={() => !enviando && setConfirmando(false)}
+        acoes={
+          <>
+            <Botao variante="secundario" onClick={() => setConfirmando(false)} disabled={enviando}>
+              Voltar e revisar
+            </Botao>
+            <Botao onClick={submeter} disabled={enviando}>
+              {enviando ? 'Enviando…' : 'Enviar avaliação'}
+            </Botao>
+          </>
+        }
       >
-        {enviando ? 'Enviando…' : faltam > 0 ? `Faltam ${faltam} perguntas objetivas` : 'Enviar avaliação'}
-      </button>
+        <p>
+          Depois do envio, as respostas não podem mais ser alteradas. As notas saem na hora; a análise das respostas
+          abertas pode levar alguns minutos.
+        </p>
+      </Modal>
     </div>
   )
 }
@@ -88,7 +111,7 @@ function CampoPergunta({ pergunta, valor, aoResponder }: PropsCampo) {
       <label className="flex flex-col gap-2">
         <span className="text-titulo">{pergunta.texto}</span>
         <textarea
-          className="min-h-28 rounded border border-borda bg-fundo p-3 text-titulo"
+          className="min-h-28 rounded border border-borda bg-superficie p-3 text-titulo"
           maxLength={5000}
           value={valor?.texto_aberto ?? ''}
           onChange={(e) => aoResponder({ pergunta: pergunta.id, texto_aberto: e.target.value })}

@@ -1,8 +1,19 @@
 import { useCallback, useState } from 'react'
+import { Navigate, Outlet, Route, Routes, useLocation } from 'react-router'
 import { sair } from '@/features/auth/authApi'
 import { lerToken } from './api/cliente'
+import { Cabecalho } from '@/components/Cabecalho'
 import { Login } from '@/features/auth/Login'
-import { PaginaAvaliacao } from '@/features/avaliacoes/PaginaAvaliacao'
+import { PaginaQuestionario } from '@/features/avaliacoes/PaginaQuestionario'
+import { PaginaResultado, PaginaUltimoResultado } from '@/features/avaliacoes/PaginaResultado'
+import { PaginaCatalogo } from '@/features/catalogo/PaginaCatalogo'
+import { PaginaDashboard } from '@/features/dashboard/PaginaDashboard'
+import { PaginaHistorico } from '@/features/historico/PaginaHistorico'
+
+const PAGINA_INICIAL = '/dashboard'
+
+/** Página que a pessoa tentou abrir antes de ir para o login. */
+type EstadoLogin = { de?: string } | null
 
 function App() {
   const [logado, setLogado] = useState(() => lerToken() !== null)
@@ -13,20 +24,48 @@ function App() {
   }, [])
 
   return (
-    <main className="flex flex-col">
-      <header className="flex items-center justify-between gap-4 border-b border-borda px-6">
-        <div>
-          <h1>Análise de adoção de IA</h1>
-          <p className="mb-6">Avaliação de prontidão organizacional para adoção de IA em empresas.</p>
-        </div>
-        {logado && (
-          <button type="button" onClick={encerrarSessao} className="text-sm underline">
-            Sair
-          </button>
-        )}
-      </header>
-      {logado ? <PaginaAvaliacao aoExpirarSessao={encerrarSessao} /> : <Login aoEntrar={() => setLogado(true)} />}
+    <Routes>
+      <Route path="/login" element={<RotaLogin logado={logado} aoEntrar={() => setLogado(true)} />} />
+      <Route element={logado ? <LayoutLogado aoSair={encerrarSessao} /> : <IrParaLogin />}>
+        <Route path="/dashboard" element={<PaginaDashboard />} />
+        <Route path="/questionario" element={<PaginaQuestionario aoExpirarSessao={encerrarSessao} />} />
+        <Route path="/resultados" element={<PaginaUltimoResultado aoExpirarSessao={encerrarSessao} />} />
+        <Route path="/resultados/:id" element={<PaginaResultado aoExpirarSessao={encerrarSessao} />} />
+        <Route path="/historico" element={<PaginaHistorico />} />
+        <Route path="/catalogo" element={<PaginaCatalogo />} />
+        <Route path="*" element={<Navigate to={PAGINA_INICIAL} replace />} />
+      </Route>
+    </Routes>
+  )
+}
+
+function RotaLogin({ logado, aoEntrar }: { logado: boolean; aoEntrar: () => void }) {
+  const { state } = useLocation()
+  if (logado) {
+    const de = (state as EstadoLogin)?.de
+    return <Navigate to={de?.startsWith('/') ? de : PAGINA_INICIAL} replace />
+  }
+  return (
+    <main className="flex flex-1 items-center justify-center p-6">
+      <Login aoEntrar={aoEntrar} />
     </main>
+  )
+}
+
+/** Sem login (ou com a sessão expirada): vai para /login lembrando a página atual. */
+function IrParaLogin() {
+  const { pathname, search } = useLocation()
+  return <Navigate to="/login" replace state={{ de: pathname + search } satisfies EstadoLogin} />
+}
+
+function LayoutLogado({ aoSair }: { aoSair: () => void }) {
+  return (
+    <div className="flex flex-1 flex-col">
+      <Cabecalho aoSair={aoSair} />
+      <main className="flex flex-1 flex-col">
+        <Outlet />
+      </main>
+    </div>
   )
 }
 
