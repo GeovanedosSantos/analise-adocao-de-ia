@@ -30,7 +30,7 @@ export function Modal({ aberto, titulo, aoFechar, acoes, children }: Props) {
         evento.preventDefault()
         aoFechar()
       }}
-      className="m-auto w-[calc(100%-2rem)] max-w-md rounded-lg border border-borda bg-fundo p-6 text-texto shadow-xl backdrop:bg-black/50"
+      className="m-auto w-[calc(100%-2rem)] max-w-md rounded-xl border border-borda bg-superficie p-6 text-texto shadow-xl backdrop:bg-black/50"
     >
       <div className="flex flex-col gap-4">
         <h2 id={idTitulo}>{titulo}</h2>

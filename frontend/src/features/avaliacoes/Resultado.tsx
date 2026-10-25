@@ -5,9 +5,14 @@ import { Botao } from '@/components/Botao'
 import { acompanharProcessamento } from './acompanhamento'
 import { consultarStatus, obterAvaliacao, type Avaliacao } from './avaliacoesApi'
 
-type Props = { avaliacao: Avaliacao; aoExpirarSessao: () => void }
+type Props = {
+  avaliacao: Avaliacao
+  /** Veio direto do envio do questionário: mostra a mensagem de conclusão. */
+  enviada?: boolean
+  aoExpirarSessao: () => void
+}
 
-export function Resultado({ avaliacao: inicial, aoExpirarSessao }: Props) {
+export function Resultado({ avaliacao: inicial, enviada = false, aoExpirarSessao }: Props) {
   const [avaliacao, setAvaliacao] = useState(inicial)
   const [esgotado, setEsgotado] = useState(false)
   const [rodada, setRodada] = useState(0)
@@ -35,6 +40,11 @@ export function Resultado({ avaliacao: inicial, aoExpirarSessao }: Props) {
 
   return (
     <div className="flex flex-col gap-6 p-6">
+      {enviada && (
+        <Alerta tipo="sucesso" titulo="Avaliação enviada">
+          Suas respostas foram registradas e a pontuação já está calculada.
+        </Alerta>
+      )}
       <h2>Resultado da avaliação</h2>
       <dl className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Indicador rotulo="Índice geral" valor={avaliacao.nota_geral?.toFixed(1) ?? '—'} />
@@ -42,7 +52,7 @@ export function Resultado({ avaliacao: inicial, aoExpirarSessao }: Props) {
         <Indicador rotulo="Situação" valor={avaliacao.apta ? 'Apta' : 'Não apta'} />
       </dl>
 
-      <section className="flex flex-col gap-2">
+      <section className="flex flex-col gap-2 rounded-xl border border-borda bg-superficie p-6">
         <h2>Por dimensão</h2>
         {avaliacao.pontuacoes.map((p) => (
           <p key={p.dimensao} className={p.prioritaria ? 'font-medium text-destaque' : ''}>
@@ -69,7 +79,7 @@ export function Resultado({ avaliacao: inicial, aoExpirarSessao }: Props) {
         </Alerta>
       )}
       {analises.length > 0 && (
-        <section className="flex flex-col gap-2">
+        <section className="flex flex-col gap-2 rounded-xl border border-borda bg-superficie p-6">
           <h2>Análise das respostas abertas</h2>
           {analises.map((r) => (
             <p key={r.pergunta}>{r.feedback_ia?.analise_qualitativa}</p>
@@ -82,7 +92,7 @@ export function Resultado({ avaliacao: inicial, aoExpirarSessao }: Props) {
 
 function Indicador({ rotulo, valor }: { rotulo: string; valor: string }) {
   return (
-    <div className="rounded border border-borda p-4">
+    <div className="rounded-xl border border-borda bg-superficie p-4">
       <dt className="text-sm">{rotulo}</dt>
       <dd className="text-2xl font-medium text-titulo">{valor}</dd>
     </div>

@@ -4,20 +4,26 @@
   --color-texto: var(--text);
   --color-titulo: var(--text-h);
   --color-fundo: var(--bg);
+  --color-superficie: var(--surface);
   --color-borda: var(--border);
   --color-destaque: var(--accent);
   --color-destaque-fundo: var(--accent-bg);
+  --color-sobre-destaque: var(--on-accent);
 }
 
 :root {
   --text: #6b6375;
   --text-h: #08060d;
-  --bg: #fff;
+  /* Fundo da página levemente acinzentado; seções (cabeçalho, cartões, modal) em --surface por cima */
+  --bg: #f4f6f9;
+  --surface: #fff;
   --border: #e5e4e7;
   --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
+  /* Azul primário: contraste de 4,7:1 com o texto branco dos botões */
+  --accent: #1d72d8;
+  --accent-bg: rgba(29, 114, 216, 0.1);
+  --accent-border: rgba(29, 114, 216, 0.5);
+  --on-accent: #fff;
   --social-bg: rgba(244, 243, 236, 0.5);
   --shadow:
     rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
@@ -31,6 +37,7 @@
   color-scheme: light dark;
   color: var(--text);
   background: var(--bg);
+  accent-color: var(--accent);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -46,11 +53,14 @@
     --text: #9ca3af;
     --text-h: #f3f4f6;
     --bg: #16171d;
+    --surface: #1e2028;
     --border: #2e303a;
     --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
+    /* Azul mais claro no escuro: o texto dos botões passa a ser escuro (7,4:1) */
+    --accent: #60a5fa;
+    --accent-bg: rgba(96, 165, 250, 0.149);
+    --accent-border: rgba(96, 165, 250, 0.502);
+    --on-accent: #0b1220;
     --social-bg: rgba(47, 48, 58, 0.5);
     --shadow:
       rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
@@ -58,45 +68,48 @@
 }
 
 #root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  border-inline: 1px solid var(--border);
   min-height: 100svh;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
 }
 
-body {
-  margin: 0;
-}
-
-h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
-}
-
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
+/* Estilos base na camada `base`: as classes do Tailwind (ex.: text-3xl, m-0) conseguem sobrescrevê-los */
+@layer base {
+  body {
+    margin: 0;
   }
-}
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
+
+  :where(button, [role="button"]):not([disabled]) {
+    cursor: pointer;
   }
-}
-p {
-  margin: 0;
+
+  h1,
+  h2 {
+    font-family: var(--heading);
+    font-weight: 500;
+    color: var(--text-h);
+  }
+
+  h1 {
+    font-size: 56px;
+    letter-spacing: -1.68px;
+    margin: 32px 0;
+    @media (max-width: 1024px) {
+      font-size: 36px;
+      margin: 20px 0;
+    }
+  }
+  h2 {
+    font-size: 24px;
+    line-height: 118%;
+    letter-spacing: -0.24px;
+    margin: 0 0 8px;
+    @media (max-width: 1024px) {
+      font-size: 20px;
+    }
+  }
+  p {
+    margin: 0;
+  }
 }

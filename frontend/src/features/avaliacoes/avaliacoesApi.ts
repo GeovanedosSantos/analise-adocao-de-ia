@@ -25,11 +25,21 @@ export type Avaliacao = {
   status: StatusAvaliacao
   questionario: string
   versao_questionario: string
+  data_inicio: string
+  data_fim: string | null
   nota_geral: number | null
   nivel_maturidade: number | null
   apta: boolean | null
   respostas: Resposta[]
   pontuacoes: Pontuacao[]
+}
+
+/** Como vem na listagem: sem respostas nem pontuações. */
+export type AvaliacaoResumo = Omit<Avaliacao, 'questionario' | 'respostas' | 'pontuacoes'>
+
+/** Avaliações da empresa, da mais recente para a mais antiga (inclui o rascunho, se houver). */
+export async function listarAvaliacoes() {
+  return (await requisicao<AvaliacaoResumo[]>('/avaliacoes/')).dados
 }
 
 /** Retoma o rascunho da empresa ou abre um novo na versão ativa. */
