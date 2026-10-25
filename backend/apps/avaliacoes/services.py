@@ -61,6 +61,8 @@ def calcular_pontuacao(avaliacao):
     - Nota da dimensão: média das objetivas ponderada pelo peso da pergunta, levada de 0 a 100.
     - Nota geral: média das dimensões ponderada pelo peso da dimensão.
     - Dimensão prioritária: a de menor nota.
+    - Deltas (RF13): diferença em pontos para a avaliação anterior da empresa. As dimensões são
+      pareadas pelo código, que se mantém entre versões do questionário.
     """
     valores = dict(avaliacao.respostas.filter(valor_objetivo__isnull=False).values_list('pergunta_id', 'valor_objetivo'))
     por_dimensao = defaultdict(list)
@@ -68,10 +70,15 @@ def calcular_pontuacao(avaliacao):
         if pergunta.id in valores:
             por_dimensao[pergunta.dimensao].append((pergunta.peso, valores[pergunta.id]))
 
-    pontuacoes = [
-        PontuacaoDimensao(avaliacao=avaliacao, dimensao=dimensao, nota=_nota_normalizada(itens))
-        for dimensao, itens in sorted(por_dimensao.items(), key=lambda par: par[0].ordem)
-    ]
+    anterior = _avaliacao_anterior(avaliacao)
+    notas_anteriores = dict(anterior.pontuacoes.values_list('dimensao__codigo', 'nota')) if anterior else {}
+    pontuacoes = []
+    for dimensao, itens in sorted(por_dimensao.items(), key=lambda par: par[0].ordem):
+        nota = _nota_normalizada(itens)
+        pontuacoes.append(PontuacaoDimensao(
+            avaliacao=avaliacao, dimensao=dimensao, nota=nota,
+            delta_percentual=_delta(nota, notas_anteriores.get(dimensao.codigo)),
+        ))
     if pontuacoes:
         min(pontuacoes, key=lambda p: p.nota).prioritaria = True
     avaliacao.pontuacoes.all().delete()
@@ -81,8 +88,24 @@ def calcular_pontuacao(avaliacao):
     avaliacao.nota_geral = sum(p.nota * p.dimensao.peso for p in pontuacoes) / peso_total if peso_total else None
     avaliacao.nivel_maturidade = _nivel(avaliacao.nota_geral)
     avaliacao.apta = None if avaliacao.nota_geral is None else avaliacao.nota_geral >= settings.NOTA_CORTE_APTIDAO
-    avaliacao.save(update_fields=['nota_geral', 'nivel_maturidade', 'apta'])
+    avaliacao.delta_nota_geral = _delta(avaliacao.nota_geral, anterior.nota_geral if anterior else None)
+    avaliacao.save(update_fields=['nota_geral', 'nivel_maturidade', 'apta', 'delta_nota_geral'])
     return avaliacao
+
+
+def _avaliacao_anterior(avaliacao):
+    """Última avaliação submetida da empresa antes desta. `data_fim` só é preenchida na submissão."""
+    referencia = avaliacao.data_fim or timezone.now()
+    return (
+        Avaliacao.objects.filter(empresa_id=avaliacao.empresa_id, data_fim__lt=referencia)
+        .exclude(pk=avaliacao.pk)
+        .order_by('-data_fim')
+        .first()
+    )
+
+
+def _delta(atual, anterior):
+    return None if atual is None or anterior is None else atual - anterior
 
 
 def _nota_normalizada(itens):

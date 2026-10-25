@@ -2,6 +2,7 @@ import uuid
 
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
+from django.utils.text import slugify
 
 
 class Questionario(models.Model):
@@ -42,7 +43,8 @@ class Questionario(models.Model):
         copia = Questionario.objects.create(versao=versao, descricao=self.descricao)
         for dimensao in self.dimensoes.prefetch_related('perguntas'):
             nova_dimensao = Dimensao.objects.create(
-                questionario=copia, nome=dimensao.nome, peso=dimensao.peso, ordem=dimensao.ordem,
+                questionario=copia, codigo=dimensao.codigo, nome=dimensao.nome, peso=dimensao.peso,
+                ordem=dimensao.ordem,
             )
             Pergunta.objects.bulk_create(
                 Pergunta(dimensao=nova_dimensao, texto=p.texto, tipo=p.tipo, peso=p.peso, ordem=p.ordem, ativa=p.ativa)
@@ -80,6 +82,11 @@ class EstruturaVersionada(models.Model):
 class Dimensao(EstruturaVersionada):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     questionario = models.ForeignKey(Questionario, on_delete=models.CASCADE, related_name='dimensoes')
+    codigo = models.SlugField(
+        max_length=50, blank=True,
+        help_text='Identificador estável entre versões (ex.: "dados"). Liga avaliações de versões diferentes '
+                  'e o catálogo de recomendações. Se ficar em branco, é gerado a partir do nome.',
+    )
     nome = models.CharField(max_length=255)
     peso = models.FloatField(help_text='Peso da dimensão no índice geral de prontidão.')
     ordem = models.PositiveSmallIntegerField(default=0)
@@ -91,10 +98,16 @@ class Dimensao(EstruturaVersionada):
         constraints = [
             models.CheckConstraint(condition=models.Q(peso__gt=0), name='dimensao_peso_positivo'),
             models.UniqueConstraint(fields=['questionario', 'nome'], name='dimensao_nome_unico_na_versao'),
+            models.UniqueConstraint(fields=['questionario', 'codigo'], name='dimensao_codigo_unico_na_versao'),
         ]
 
     def __str__(self):
         return self.nome
+
+    def save(self, *args, **kwargs):
+        if not self.codigo:
+            self.codigo = slugify(self.nome)[:50]
+        super().save(*args, **kwargs)
 
     def get_questionario(self):
         return self.questionario

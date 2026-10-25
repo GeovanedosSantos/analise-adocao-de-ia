@@ -14,11 +14,12 @@ class RespostaSerializer(serializers.ModelSerializer):
 
 
 class PontuacaoDimensaoSerializer(serializers.ModelSerializer):
+    dimensao_codigo = serializers.CharField(source='dimensao.codigo')
     dimensao_nome = serializers.CharField(source='dimensao.nome')
 
     class Meta:
         model = PontuacaoDimensao
-        fields = ['dimensao', 'dimensao_nome', 'nota', 'prioritaria']
+        fields = ['dimensao', 'dimensao_codigo', 'dimensao_nome', 'nota', 'prioritaria', 'delta_percentual']
 
 
 class AvaliacaoResumoSerializer(serializers.ModelSerializer):
@@ -27,7 +28,7 @@ class AvaliacaoResumoSerializer(serializers.ModelSerializer):
     class Meta:
         model = Avaliacao
         fields = ['id', 'status', 'versao_questionario', 'data_inicio', 'data_fim', 'nota_geral',
-                  'nivel_maturidade', 'apta']
+                  'nivel_maturidade', 'apta', 'delta_nota_geral']
 
 
 class AvaliacaoSerializer(AvaliacaoResumoSerializer):

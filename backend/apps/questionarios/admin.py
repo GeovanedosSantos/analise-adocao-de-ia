@@ -32,7 +32,7 @@ class QuestionarioAdmin(admin.ModelAdmin):
 
 @admin.register(Dimensao)
 class DimensaoAdmin(admin.ModelAdmin):
-    list_display = ['nome', 'questionario', 'peso', 'ordem']
+    list_display = ['nome', 'codigo', 'questionario', 'peso', 'ordem']
     list_filter = ['questionario']
     inlines = [PerguntaInline]
 

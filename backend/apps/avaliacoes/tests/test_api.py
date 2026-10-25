@@ -1,8 +1,11 @@
+from datetime import timedelta
 from unittest import mock
 
+from django.utils import timezone
 from rest_framework.test import APITestCase
 
 from apps.avaliacoes.models import Avaliacao, StatusAvaliacao
+from apps.avaliacoes.services import calcular_pontuacao
 from apps.contas.models import AuditoriaAcesso
 from apps.contas.tests.fabricas import criar_empresa, criar_usuario
 from apps.questionarios.models import Questionario, TipoPergunta
@@ -179,6 +182,23 @@ class SubmeterTests(ApiTestCase):
         self.assertEqual(resposta.status_code, 200)
         self.assertEqual(resposta.data['status'], StatusAvaliacao.CONCLUIDA)
         delay.assert_not_called()
+
+    def test_resposta_traz_os_deltas_em_relacao_a_avaliacao_anterior(self, delay):
+        anterior = criar_avaliacao(
+            self.empresa, self.questionario, status=StatusAvaliacao.CONCLUIDA,
+            data_fim=timezone.now() - timedelta(days=30),
+        )
+        responder_objetivas(anterior, [5, 1, 5])
+        calcular_pontuacao(anterior)
+        responder_objetivas(self.avaliacao, [5, 5, 5])
+
+        resposta = self.client.post(self.url)
+
+        self.assertEqual(resposta.data['delta_nota_geral'], 50.0)
+        self.assertEqual(
+            [(p['dimensao_codigo'], p['delta_percentual']) for p in resposta.data['pontuacoes']],
+            [('dados', 75.0), ('pessoas', 0.0)],
+        )
 
     def test_nao_submete_duas_vezes(self, delay):
         responder_objetivas(self.avaliacao, [5, 1, 5])

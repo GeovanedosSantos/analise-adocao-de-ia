@@ -1,5 +1,9 @@
-from django.test import TestCase, override_settings
+from datetime import timedelta
 
+from django.test import TestCase, override_settings
+from django.utils import timezone
+
+from apps.avaliacoes.models import StatusAvaliacao
 from apps.avaliacoes.services import calcular_pontuacao
 from apps.contas.tests.fabricas import criar_empresa
 from apps.questionarios.models import Dimensao, Pergunta, TipoPergunta
@@ -76,3 +80,71 @@ class MotorDePontuacaoTests(TestCase):
 
         self.assertNotIn('Cultura', self.notas())
         self.assertAlmostEqual(self.avaliacao.nota_geral, 50.0)
+
+
+class DeltasTests(TestCase):
+    """Deltas (RF13) em pontos. Valores na ordem das objetivas: Dados/peso 1, Dados/peso 3, Pessoas/peso 1.
+
+    [5, 1, 5] → Dados 25, Pessoas 100, geral 50. [1, 5, 1] → Dados 75, Pessoas 0, geral 50.
+    """
+
+    def setUp(self):
+        self.empresa = criar_empresa()
+        self.questionario = criar_questionario()
+
+    def submetida(self, valores, dias_atras=0, questionario=None, empresa=None):
+        avaliacao = criar_avaliacao(
+            empresa or self.empresa, questionario or self.questionario,
+            status=StatusAvaliacao.CONCLUIDA, data_fim=timezone.now() - timedelta(days=dias_atras),
+        )
+        responder_objetivas(avaliacao, valores)
+        return calcular_pontuacao(avaliacao)
+
+    def deltas(self, avaliacao):
+        return {p.dimensao.codigo: p.delta_percentual for p in avaliacao.pontuacoes.select_related('dimensao')}
+
+    def test_primeira_avaliacao_nao_tem_deltas(self):
+        avaliacao = self.submetida([5, 1, 5])
+
+        self.assertEqual(self.deltas(avaliacao), {'dados': None, 'pessoas': None})
+        self.assertIsNone(avaliacao.delta_nota_geral)
+
+    def test_delta_e_a_diferenca_em_pontos_para_a_avaliacao_anterior(self):
+        self.submetida([5, 1, 5], dias_atras=30)
+
+        atual = self.submetida([1, 5, 1])
+
+        self.assertEqual(self.deltas(atual), {'dados': 50.0, 'pessoas': -100.0})
+        self.assertEqual(atual.delta_nota_geral, 0.0)
+
+    def test_compara_com_a_submissao_mais_recente_da_propria_empresa(self):
+        self.submetida([1, 1, 1], dias_atras=60)
+        self.submetida([5, 1, 5], dias_atras=30)
+        self.submetida([5, 5, 5], dias_atras=1, empresa=criar_empresa('Outra'))
+        criar_avaliacao(self.empresa, self.questionario)  # rascunho: não tem data_fim
+
+        atual = self.submetida([1, 5, 1])
+
+        self.assertEqual(self.deltas(atual), {'dados': 50.0, 'pessoas': -100.0})
+
+    def test_pareia_dimensoes_pelo_codigo_entre_versoes(self):
+        self.submetida([5, 1, 5], dias_atras=30)
+        v2 = self.questionario.nova_versao('2.0')
+        pessoas = v2.dimensoes.get(codigo='pessoas')
+        pessoas.nome = 'Pessoas e Cultura'
+        pessoas.save()
+        cultura = Dimensao.objects.create(questionario=v2, nome='Cultura', peso=1, ordem=3)
+        Pergunta.objects.create(dimensao=cultura, texto='Há abertura a testes?', tipo=TipoPergunta.OBJETIVA, peso=1)
+        v2.publicar()
+
+        atual = self.submetida([1, 5, 1, 5], questionario=v2)
+
+        self.assertEqual(self.deltas(atual), {'dados': 50.0, 'pessoas': -100.0, 'cultura': None})
+
+    def test_recalcular_avaliacao_antiga_nao_compara_com_as_posteriores(self):
+        antiga = self.submetida([5, 1, 5], dias_atras=30)
+        self.submetida([1, 5, 1])
+
+        calcular_pontuacao(antiga)
+
+        self.assertEqual(self.deltas(antiga), {'dados': None, 'pessoas': None})
