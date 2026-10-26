@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Navigate, useLocation, useParams } from 'react-router'
 import { ErroApi } from '@/api/cliente'
-import { Alerta } from '@/components/Alerta'
+import { Carregando, MensagemPagina } from '@/components/Pagina'
 import { BotaoLink } from '@/components/Botao'
 import { listarAvaliacoes, obterAvaliacao, type Avaliacao } from './avaliacoesApi'
 import { Resultado } from './Resultado'
@@ -30,13 +30,13 @@ export function PaginaUltimoResultado({ aoExpirarSessao }: Props) {
     }
   }, [aoExpirarSessao])
 
-  if (erro) return <Mensagem tipo="erro">{erro}</Mensagem>
-  if (ultimaId === undefined) return <p className="p-6">Carregando…</p>
+  if (erro) return <MensagemPagina tipo="erro">{erro}</MensagemPagina>
+  if (ultimaId === undefined) return <Carregando />
   if (ultimaId === null) {
     return (
-      <Mensagem titulo="Nenhum resultado ainda" acao={<BotaoLink to="/questionario">Responder questionário</BotaoLink>}>
+      <MensagemPagina titulo="Nenhum resultado ainda" acao={<BotaoLink to="/questionario">Responder questionário</BotaoLink>}>
         Responda o questionário para ver a pontuação da sua empresa.
-      </Mensagem>
+      </MensagemPagina>
     )
   }
   return <Navigate to={`/resultados/${ultimaId}`} replace />
@@ -70,23 +70,15 @@ function ResultadoDaAvaliacao({ id, aoExpirarSessao }: Props & { id: string }) {
     }
   }, [id, aoExpirarSessao])
 
-  if (erro) return <Mensagem tipo="erro">{erro}</Mensagem>
-  if (!avaliacao) return <p className="p-6">Carregando…</p>
+  if (erro) return <MensagemPagina tipo="erro">{erro}</MensagemPagina>
+  if (!avaliacao) return <Carregando />
   if (avaliacao.status === 'DRAFT') {
     return (
-      <Mensagem titulo="Avaliação ainda não enviada" acao={<BotaoLink to="/questionario">Continuar respondendo</BotaoLink>}>
+      <MensagemPagina titulo="Avaliação ainda não enviada" acao={<BotaoLink to="/questionario">Continuar respondendo</BotaoLink>}>
         O resultado aparece depois que o questionário é enviado.
-      </Mensagem>
+      </MensagemPagina>
     )
   }
   const enviada = (state as { enviada?: boolean } | null)?.enviada === true
   return <Resultado avaliacao={avaliacao} enviada={enviada} aoExpirarSessao={aoExpirarSessao} />
-}
-
-function Mensagem(props: Parameters<typeof Alerta>[0]) {
-  return (
-    <div className="p-6">
-      <Alerta {...props} />
-    </div>
-  )
 }

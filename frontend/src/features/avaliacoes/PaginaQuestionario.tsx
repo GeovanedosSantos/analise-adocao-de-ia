@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { iniciarAvaliacao, obterQuestionario, type Avaliacao, type Questionario } from './avaliacoesApi'
 import { ErroApi } from '@/api/cliente'
-import { Alerta } from '@/components/Alerta'
+import { Carregando, MensagemPagina } from '@/components/Pagina'
 import { Formulario } from './Formulario'
 
 type Carga = { avaliacao: Avaliacao; questionario: Questionario }
@@ -32,14 +32,8 @@ export function PaginaQuestionario({ aoExpirarSessao }: { aoExpirarSessao: () =>
     }
   }, [aoExpirarSessao])
 
-  if (erro) {
-    return (
-      <div className="p-6">
-        <Alerta tipo="erro">{erro}</Alerta>
-      </div>
-    )
-  }
-  if (!carga) return <p className="p-6">Carregando…</p>
+  if (erro) return <MensagemPagina tipo="erro">{erro}</MensagemPagina>
+  if (!carga) return <Carregando texto="Carregando o questionário…" />
   return (
     <Formulario
       avaliacao={carga.avaliacao}
