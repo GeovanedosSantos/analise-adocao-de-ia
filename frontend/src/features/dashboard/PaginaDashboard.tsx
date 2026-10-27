@@ -4,7 +4,7 @@ import { ErroApi } from '@/api/cliente'
 import { BotaoLink } from '@/components/Botao'
 import { Delta } from '@/components/Delta'
 import { Carregando, Cartao, MensagemPagina, Pagina } from '@/components/Pagina'
-import { listarAvaliacoes, obterAvaliacao, type Avaliacao } from '@/features/avaliacoes/avaliacoesApi'
+import { obterHistorico, type AvaliacaoHistorico } from '@/features/avaliacoes/avaliacoesApi'
 import { ResumoAvaliacao } from '@/components/ResumoAvaliacao'
 import { ExploradorDimensoes } from '@/features/avaliacoes/ExploradorDimensoes'
 import { LinhaDoTempo, type PontoLinha, type SerieDimensao } from './graficos'
@@ -19,12 +19,12 @@ const PERIODOS = [
 type Periodo = (typeof PERIODOS)[number][0]
 const TOTAL_CORES = 8
 const formatoData = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'medium' })
-const dataDe = (a: Avaliacao) => formatoData.format(new Date(a.data_fim ?? a.data_inicio))
+const dataDe = (a: AvaliacaoHistorico) => formatoData.format(new Date(a.data_fim ?? a.data_inicio))
 
 /** Tela inicial do usuário: indicadores de prontidão da empresa (UC04, US07, RF12 a RF14). */
 export function PaginaDashboard({ aoExpirarSessao }: Props) {
   // Avaliações enviadas, com as pontuações, da mais recente para a mais antiga
-  const [avaliacoes, setAvaliacoes] = useState<Avaliacao[] | undefined>(undefined)
+  const [avaliacoes, setAvaliacoes] = useState<AvaliacaoHistorico[] | undefined>(undefined)
   const [erro, setErro] = useState<string | null>(null)
   const [periodo, setPeriodo] = useState<Periodo>('tudo')
   // Dimensões desligadas na linha do tempo (filtro por dimensão do UC04)
@@ -37,10 +37,7 @@ export function PaginaDashboard({ aoExpirarSessao }: Props) {
   useEffect(() => {
     let ativo = true
     async function carregar() {
-      // A listagem vem da mais recente para a mais antiga; o rascunho não tem notas
-      const enviadas = (await listarAvaliacoes()).filter((a) => a.status !== 'DRAFT')
-      // shortcut: um GET por avaliação para ter as notas por dimensão; trocar pelo endpoint de histórico (RF11) quando existir
-      return Promise.all(enviadas.map((a) => obterAvaliacao(a.id)))
+      return (await obterHistorico()).filter((a) => a.status !== 'DRAFT')
     }
     carregar()
       .then((d) => ativo && setAvaliacoes(d))
@@ -201,8 +198,8 @@ function DestaquesDaAda({
   anterior,
   aoSelecionar,
 }: {
-  atual: Avaliacao
-  anterior: Avaliacao | null
+  atual: AvaliacaoHistorico
+  anterior: AvaliacaoHistorico | null
   aoSelecionar: (codigo: string) => void
 }) {
   const comDelta = atual.pontuacoes.filter((p) => p.delta_percentual !== null)

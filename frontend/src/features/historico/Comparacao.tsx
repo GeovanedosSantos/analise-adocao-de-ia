@@ -1,40 +1,14 @@
-import { useEffect, useState } from 'react'
-import { ErroApi } from '@/api/cliente'
-import { Alerta } from '@/components/Alerta'
 import { Delta } from '@/components/Delta'
 import { Cartao } from '@/components/Pagina'
-import { obterAvaliacao, type Avaliacao } from '@/features/avaliacoes/avaliacoesApi'
+import type { AvaliacaoHistorico } from '@/features/avaliacoes/avaliacoesApi'
 
-/** `ids` da avaliação mais antiga para a mais recente. */
-type Props = { ids: string[]; aoExpirarSessao: () => void }
+/** Avaliações da mais antiga para a mais recente. */
+type Props = { avaliacoes: AvaliacaoHistorico[] }
 
 const formatoData = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short' })
 
 /** Notas por dimensão de duas ou mais avaliações lado a lado (UC05). */
-export function Comparacao({ ids, aoExpirarSessao }: Props) {
-  const [avaliacoes, setAvaliacoes] = useState<Avaliacao[] | null>(null)
-  const [erro, setErro] = useState<string | null>(null)
-
-  // shortcut: busca o detalhe de cada avaliação; trocar pelo endpoint de histórico (RF11) quando existir
-  // Depende da lista em texto: o array chega novo a cada renderização da página
-  const chave = ids.join()
-  useEffect(() => {
-    let ativo = true
-    Promise.all(chave.split(',').map((id) => obterAvaliacao(id)))
-      .then((dados) => ativo && setAvaliacoes(dados))
-      .catch((e) => {
-        if (!ativo) return
-        if (e instanceof ErroApi && e.status === 401) aoExpirarSessao()
-        else setErro('Não foi possível carregar a comparação.')
-      })
-    return () => {
-      ativo = false
-    }
-  }, [chave, aoExpirarSessao])
-
-  if (erro) return <Alerta tipo="erro">{erro}</Alerta>
-  if (!avaliacoes) return <p>Carregando comparação…</p>
-
+export function Comparacao({ avaliacoes }: Props) {
   // Casa as dimensões pelo código: entre versões do questionário o id muda, o código não
   const dimensoes = new Map<string, string>()
   for (const p of [...avaliacoes].reverse().flatMap((a) => a.pontuacoes)) {

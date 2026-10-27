@@ -47,9 +47,17 @@ export type Avaliacao = {
 /** Como vem na listagem: sem respostas nem pontuações. */
 export type AvaliacaoResumo = Omit<Avaliacao, 'questionario' | 'respostas' | 'pontuacoes'>
 
+/** Resumo com pontuações por dimensão, usado pelo dashboard e histórico. */
+export type AvaliacaoHistorico = AvaliacaoResumo & { pontuacoes: Pontuacao[] }
+
 /** Avaliações da empresa, da mais recente para a mais antiga (inclui o rascunho, se houver). */
 export async function listarAvaliacoes() {
   return (await requisicao<AvaliacaoResumo[]>('/avaliacoes/')).dados
+}
+
+/** Histórico da empresa com pontuações por dimensão, sem carregar respostas. */
+export async function obterHistorico() {
+  return (await requisicao<AvaliacaoHistorico[]>('/avaliacoes/historico/')).dados
 }
 
 /** Retoma o rascunho da empresa ou abre um novo na versão ativa. */
