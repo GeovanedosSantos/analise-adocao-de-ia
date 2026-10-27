@@ -138,7 +138,7 @@ export function PaginaHistorico({ aoExpirarSessao }: Props) {
                       <span className="mr-2 font-semibold text-titulo">{a.nota_geral?.toFixed(1) ?? '—'}</span>
                       <Delta valor={a.delta_nota_geral} />
                     </td>
-                    <td className="whitespace-nowrap">{a.nivel_maturidade ? `${a.nivel_maturidade} de 5` : '—'}</td>
+                    <td className="whitespace-nowrap">{a.nivel_prontidao ? `${a.nivel_prontidao} de 5` : '—'}</td>
                     <td className="whitespace-nowrap">
                       <Situacao apta={a.apta} />
                     </td>

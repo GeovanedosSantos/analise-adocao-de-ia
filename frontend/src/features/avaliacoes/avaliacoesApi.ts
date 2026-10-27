@@ -37,7 +37,7 @@ export type Avaliacao = {
   data_fim: string | null
   nota_geral: number | null
   nivel_maturidade: number | null
-  apta: boolean | null
+  // apta: boolean | null
   /** Diferença em pontos para a nota geral da avaliação anterior; null na primeira. */
   delta_nota_geral: number | null
   respostas: Resposta[]
