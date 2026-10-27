@@ -9,20 +9,30 @@ from apps.questionarios.models import Questionario
 
 from . import services
 from .models import Avaliacao, StatusAvaliacao
-from .serializers import AvaliacaoResumoSerializer, AvaliacaoSerializer, RascunhoSerializer
+from .serializers import AvaliacaoHistoricoSerializer, AvaliacaoResumoSerializer, AvaliacaoSerializer, RascunhoSerializer
 
 
 class AvaliacaoViewSet(TenantViewMixin, mixins.ListModelMixin, mixins.RetrieveModelMixin, GenericViewSet):
     queryset = Avaliacao.objects.select_related('questionario')
 
     def get_serializer_class(self):
+        if self.action == 'historico':
+            return AvaliacaoHistoricoSerializer
         return AvaliacaoResumoSerializer if self.action == 'list' else AvaliacaoSerializer
 
     def get_queryset(self):
         queryset = super().get_queryset()
         if self.action == 'retrieve':
             queryset = queryset.prefetch_related('respostas', 'pontuacoes__dimensao')
+        elif self.action == 'historico':
+            queryset = queryset.prefetch_related('pontuacoes__dimensao')
         return queryset
+
+    @action(detail=False, methods=['get'])
+    def historico(self, request):
+        avaliacoes = self.filter_queryset(self.get_queryset())
+        serializer = self.get_serializer(avaliacoes, many=True)
+        return Response(serializer.data)
 
     def create(self, request):
         try:

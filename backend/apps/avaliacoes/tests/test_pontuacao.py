@@ -71,6 +71,14 @@ class MotorDePontuacaoTests(TestCase):
         prioritarias = list(self.avaliacao.pontuacoes.filter(prioritaria=True).values_list('dimensao__nome', flat=True))
         self.assertEqual(prioritarias, ['Pessoas'])
 
+    def test_empate_na_menor_nota_marca_todas_as_dimensoes_prioritarias(self):
+        responder_objetivas(self.avaliacao, [1, 1, 1])
+
+        calcular_pontuacao(self.avaliacao)
+
+        prioritarias = list(self.avaliacao.pontuacoes.filter(prioritaria=True).values_list('dimensao__nome', flat=True))
+        self.assertEqual(prioritarias, ['Dados', 'Pessoas'])
+
     def test_dimensao_sem_perguntas_objetivas_ativas_nao_entra_no_calculo(self):
         so_texto = Dimensao.objects.create(questionario=self.avaliacao.questionario, nome='Cultura', peso=5, ordem=3)
         Pergunta.objects.create(dimensao=so_texto, texto='Conte.', tipo=TipoPergunta.DISSERTATIVA, peso=1, ordem=1)
@@ -122,6 +130,25 @@ class DeltasTests(TestCase):
         self.submetida([5, 1, 5], dias_atras=30)
         self.submetida([5, 5, 5], dias_atras=1, empresa=criar_empresa('Outra'))
         criar_avaliacao(self.empresa, self.questionario)  # rascunho: não tem data_fim
+
+        atual = self.submetida([1, 5, 1])
+
+        self.assertEqual(self.deltas(atual), {'dados': 50.0, 'pessoas': -100.0})
+
+    def test_delta_ignora_avaliacoes_nao_concluidas_mais_recentes(self):
+        self.submetida([5, 1, 5], dias_atras=30)
+        for status, dias_atras in (
+            (StatusAvaliacao.PROCESSANDO_IA, 2),
+            (StatusAvaliacao.ERRO_PROCESSAMENTO, 1),
+        ):
+            nao_concluida = criar_avaliacao(
+                self.empresa,
+                self.questionario,
+                status=status,
+                data_fim=timezone.now() - timedelta(days=dias_atras),
+            )
+            responder_objetivas(nao_concluida, [1, 5, 1])
+            calcular_pontuacao(nao_concluida)
 
         atual = self.submetida([1, 5, 1])
 

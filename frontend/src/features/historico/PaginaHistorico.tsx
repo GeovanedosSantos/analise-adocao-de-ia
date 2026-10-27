@@ -4,7 +4,7 @@ import { Botao, BotaoLink } from '@/components/Botao'
 import { Delta } from '@/components/Delta'
 import { Indicador } from '@/components/Indicador'
 import { Carregando, Cartao, MensagemPagina, Pagina } from '@/components/Pagina'
-import { listarAvaliacoes, type AvaliacaoResumo } from '@/features/avaliacoes/avaliacoesApi'
+import { obterHistorico, type AvaliacaoHistorico } from '@/features/avaliacoes/avaliacoesApi'
 import { Comparacao } from './Comparacao'
 
 type Props = { aoExpirarSessao: () => void }
@@ -13,13 +13,13 @@ const formatoData = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short' })
 
 /** Avaliações enviadas pela empresa, com link para o resultado e comparação entre duas (UC05, RF11). */
 export function PaginaHistorico({ aoExpirarSessao }: Props) {
-  const [avaliacoes, setAvaliacoes] = useState<AvaliacaoResumo[] | null>(null)
+  const [avaliacoes, setAvaliacoes] = useState<AvaliacaoHistorico[] | null>(null)
   const [erro, setErro] = useState<string | null>(null)
   const [selecionadas, setSelecionadas] = useState<string[]>([])
 
   useEffect(() => {
     let ativo = true
-    listarAvaliacoes()
+    obterHistorico()
       .then((dados) => {
         // O rascunho ainda não tem resultado para mostrar nem comparar
         if (ativo) setAvaliacoes(dados.filter((a) => a.status !== 'DRAFT'))
@@ -49,14 +49,14 @@ export function PaginaHistorico({ aoExpirarSessao }: Props) {
   }
 
   // A comparação vai da mais antiga (à esquerda) à mais recente, seja qual for a ordem de marcação
-  const idsComparados = avaliacoes.filter((a) => selecionadas.includes(a.id)).reverse().map((a) => a.id)
+  const avaliacoesComparadas = avaliacoes.filter((a) => selecionadas.includes(a.id)).reverse()
 
   // Resumo do histórico: notas em ordem cronológica (a listagem vem da mais recente)
   const comNota = avaliacoes.filter((a) => a.nota_geral !== null).reverse()
   const notas = comNota.map((a) => a.nota_geral as number)
-  const melhor = comNota.reduce<AvaliacaoResumo | null>((m, a) => (!m || (a.nota_geral ?? 0) > (m.nota_geral ?? 0) ? a : m), null)
+  const melhor = comNota.reduce<AvaliacaoHistorico | null>((m, a) => (!m || (a.nota_geral ?? 0) > (m.nota_geral ?? 0) ? a : m), null)
   const evolucao = notas.length >= 2 ? notas[notas.length - 1] - notas[0] : null
-  const dataDe = (a: AvaliacaoResumo) => formatoData.format(new Date(a.data_fim ?? a.data_inicio))
+  const dataDe = (a: AvaliacaoHistorico) => formatoData.format(new Date(a.data_fim ?? a.data_inicio))
 
   return (
     <Pagina titulo="Histórico" descricao="Todas as avaliações enviadas pela empresa, da mais recente para a mais antiga.">
@@ -155,9 +155,8 @@ export function PaginaHistorico({ aoExpirarSessao }: Props) {
         </div>
       </Cartao>
 
-      {idsComparados.length >= 2 && (
-        // A key refaz a busca ao mudar a seleção
-        <Comparacao key={idsComparados.join()} ids={idsComparados} aoExpirarSessao={aoExpirarSessao} />
+      {avaliacoesComparadas.length >= 2 && (
+        <Comparacao key={avaliacoesComparadas.map((a) => a.id).join()} avaliacoes={avaliacoesComparadas} />
       )}
     </Pagina>
   )

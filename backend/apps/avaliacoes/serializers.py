@@ -31,6 +31,13 @@ class AvaliacaoResumoSerializer(serializers.ModelSerializer):
                   'nivel_maturidade', 'apta', 'delta_nota_geral']
 
 
+class AvaliacaoHistoricoSerializer(AvaliacaoResumoSerializer):
+    pontuacoes = PontuacaoDimensaoSerializer(many=True, read_only=True)
+
+    class Meta(AvaliacaoResumoSerializer.Meta):
+        fields = AvaliacaoResumoSerializer.Meta.fields + ['pontuacoes']
+
+
 class AvaliacaoSerializer(AvaliacaoResumoSerializer):
     respostas = RespostaSerializer(many=True)
     pontuacoes = PontuacaoDimensaoSerializer(many=True)

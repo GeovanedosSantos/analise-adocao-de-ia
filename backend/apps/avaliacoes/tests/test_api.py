@@ -25,6 +25,28 @@ class ApiTestCase(APITestCase):
         self.dissertativa = perguntas(self.questionario, TipoPergunta.DISSERTATIVA)[0]
 
 
+class HistoricoTests(ApiTestCase):
+    def test_historico_retorna_pontuacoes_sem_respostas_abertas_e_isola_empresa(self):
+        propria = criar_avaliacao(
+            self.empresa, self.questionario, status=StatusAvaliacao.CONCLUIDA, data_fim=timezone.now(),
+        )
+        alheia = criar_avaliacao(
+            criar_empresa('Empresa B'), self.questionario,
+            status=StatusAvaliacao.CONCLUIDA, data_fim=timezone.now(),
+        )
+        responder_objetivas(propria, [5, 1, 5])
+        responder_objetivas(alheia, [1, 1, 1])
+        calcular_pontuacao(propria)
+        calcular_pontuacao(alheia)
+
+        resposta = self.client.get(f'{URL}historico/')
+
+        self.assertEqual(resposta.status_code, 200)
+        self.assertEqual([item['id'] for item in resposta.data], [str(propria.id)])
+        self.assertEqual(resposta.data[0]['pontuacoes'][0]['dimensao_codigo'], 'dados')
+        self.assertNotIn('respostas', resposta.data[0])
+
+
 class CriarAvaliacaoTests(ApiTestCase):
     def test_cria_rascunho_na_versao_ativa(self):
         resposta = self.client.post(URL)

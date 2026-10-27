@@ -80,7 +80,9 @@ def calcular_pontuacao(avaliacao):
             delta_percentual=_delta(nota, notas_anteriores.get(dimensao.codigo)),
         ))
     if pontuacoes:
-        min(pontuacoes, key=lambda p: p.nota).prioritaria = True
+        menor_nota = min(p.nota for p in pontuacoes)
+        for pontuacao in pontuacoes:
+            pontuacao.prioritaria = pontuacao.nota == menor_nota
     avaliacao.pontuacoes.all().delete()
     PontuacaoDimensao.objects.bulk_create(pontuacoes)
 
@@ -94,10 +96,14 @@ def calcular_pontuacao(avaliacao):
 
 
 def _avaliacao_anterior(avaliacao):
-    """Última avaliação submetida da empresa antes desta. `data_fim` só é preenchida na submissão."""
+    """Última avaliação concluída da empresa antes desta."""
     referencia = avaliacao.data_fim or timezone.now()
     return (
-        Avaliacao.objects.filter(empresa_id=avaliacao.empresa_id, data_fim__lt=referencia)
+        Avaliacao.objects.filter(
+            empresa_id=avaliacao.empresa_id,
+            status=StatusAvaliacao.CONCLUIDA,
+            data_fim__lt=referencia,
+        )
         .exclude(pk=avaliacao.pk)
         .order_by('-data_fim')
         .first()
