@@ -5,6 +5,7 @@ import { lerToken } from './api/cliente'
 import { BarraLateral } from '@/components/BarraLateral'
 import { Carregando } from '@/components/Pagina'
 import { Login } from '@/features/auth/Login'
+import { PaginaEsqueciSenha, PaginaRedefinirSenha } from '@/features/auth/RecuperarSenha'
 import { PaginaQuestionario } from '@/features/avaliacoes/PaginaQuestionario'
 import { PaginaCatalogo } from '@/features/catalogo/PaginaCatalogo'
 import { PaginaHistorico } from '@/features/historico/PaginaHistorico'
@@ -32,13 +33,15 @@ function App() {
   return (
     <Routes>
       <Route path="/login" element={<RotaLogin logado={logado} aoEntrar={() => setLogado(true)} />} />
+      <Route path="/recuperar-senha" element={<PaginaEsqueciSenha />} />
+      <Route path="/redefinir-senha" element={<PaginaRedefinirSenha />} />
       <Route element={logado ? <LayoutLogado aoSair={encerrarSessao} /> : <IrParaLogin />}>
         <Route path="/dashboard" element={<PaginaDashboard aoExpirarSessao={encerrarSessao} />} />
         <Route path="/questionario" element={<PaginaQuestionario aoExpirarSessao={encerrarSessao} />} />
         <Route path="/resultados" element={<PaginaUltimoResultado aoExpirarSessao={encerrarSessao} />} />
         <Route path="/resultados/:id" element={<PaginaResultado aoExpirarSessao={encerrarSessao} />} />
         <Route path="/historico" element={<PaginaHistorico aoExpirarSessao={encerrarSessao} />} />
-        <Route path="/catalogo" element={<PaginaCatalogo />} />
+        <Route path="/catalogo" element={<PaginaCatalogo aoExpirarSessao={encerrarSessao} />} />
         <Route path="*" element={<Navigate to={PAGINA_INICIAL} replace />} />
       </Route>
     </Routes>
