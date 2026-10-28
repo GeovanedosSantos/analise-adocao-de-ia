@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Avaliação de prontidão para IA · {{ empresa.nome }}</title>
+<style>
+  @page { size: A4; margin: 18mm 16mm 20mm; @bottom-right { content: "Página " counter(page) " de " counter(pages); font-family: "DejaVu Sans", Arial, sans-serif; font-size: 8pt; color: #6b7280; } }
+  * { box-sizing: border-box; }
+  body { font-family: "DejaVu Sans", Arial, sans-serif; font-size: 10pt; color: #1f2937; line-height: 1.45; }
+  h1 { font-size: 18pt; margin: 0 0 2mm; color: #111827; }
+  h2 { font-size: 12.5pt; margin: 8mm 0 3mm; color: #111827; border-bottom: 1px solid #e5e7eb; padding-bottom: 1.5mm; }
+  p { margin: 0 0 2mm; }
+  .sutil { color: #6b7280; font-size: 9pt; }
+  .resumo { display: flex; gap: 6mm; margin-top: 5mm; }
+  .bloco { flex: 1; border: 1px solid #e5e7eb; border-radius: 3mm; padding: 4mm; }
+  .bloco .valor { font-size: 22pt; font-weight: bold; color: #4f46e5; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 2mm 2.5mm; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
+  th { font-size: 8.5pt; text-transform: uppercase; letter-spacing: .03em; color: #6b7280; }
+  th.num, td.num { text-align: right; white-space: nowrap; }
+  .barra { height: 2mm; background: #eef2ff; border-radius: 1mm; margin-top: 1mm; }
+  .barra span { display: block; height: 100%; background: #6366f1; border-radius: 1mm; }
+  .prioritaria { color: #b45309; font-size: 8pt; font-weight: bold; }
+  .sobe { color: #15803d; } .desce { color: #b91c1c; }
+  .acao { border: 1px solid #e5e7eb; border-radius: 3mm; padding: 3.5mm 4mm; margin-bottom: 3mm; page-break-inside: avoid; }
+  .acao h3 { font-size: 10.5pt; margin: 0 0 1.5mm; }
+  .etiquetas { margin-top: 2mm; font-size: 8.5pt; color: #4b5563; }
+  .etiquetas span { display: inline-block; margin-right: 3mm; }
+  .analise { margin-bottom: 4mm; page-break-inside: avoid; }
+  .graficos { display: flex; align-items: center; justify-content: space-between; gap: 4mm; }
+  figure { margin: 0; text-align: center; }
+  figcaption { font-size: 8.5pt; color: #6b7280; }
+  .legenda { display: inline-block; width: 3mm; height: 3mm; border-radius: 1mm; margin: 0 1mm 0 3mm; vertical-align: middle; }
+  .legenda.atual { background: #4f46e5; } .legenda.anterior { background: #c8641a; }
+  h3.grupo { font-size: 10.5pt; margin: 4mm 0 2mm; color: #374151; }
+  .analise ul { margin: 1mm 0 2mm; padding-left: 5mm; }
+</style>
+</head>
+<body>
+  <h1>Avaliação de prontidão para IA</h1>
+  <p class="sutil">
+    {{ empresa.nome }} · enviada em {{ avaliacao.data_fim|default:avaliacao.data_inicio|date:"d/m/Y" }}
+    · questionário v{{ avaliacao.questionario.versao }} · gerado em {{ gerado_em|date:"d/m/Y H:i" }}
+  </p>
+
+  <div class="resumo">
+    <div class="bloco">
+      <p class="sutil">Índice geral de prontidão</p>
+      <p class="valor">{{ avaliacao.nota_geral|floatformat:0 }}<span class="sutil"> de 100</span></p>
+      {% with d=avaliacao.delta_nota_geral %}
+        {% if d is None %}<p class="sutil">Primeira avaliação da empresa</p>
+        {% else %}<p class="{% if d > 0 %}sobe{% elif d < 0 %}desce{% endif %}">{% if d > 0 %}+{% endif %}{{ d|floatformat:1 }}% em relação à avaliação anterior</p>{% endif %}
+      {% endwith %}
+    </div>
+    <div class="bloco">
+      <p class="sutil">Nível de prontidão</p>
+      <p class="valor">{{ avaliacao.nivel_prontidao|default:"—" }}<span class="sutil"> de 5</span></p>
+    </div>
+  </div>
+
+  <h2>Notas por dimensão</h2>
+  <table>
+    <thead><tr><th>Dimensão</th><th class="num">Nota</th><th class="num">Anterior</th><th class="num">Variação</th></tr></thead>
+    <tbody>
+      {% for p in pontuacoes %}
+      <tr>
+        <td>
+          {{ p.dimensao.nome }}{% if p.prioritaria %} <span class="prioritaria">PRIORITÁRIA</span>{% endif %}
+          <div class="barra"><span style="width: {{ p.nota|floatformat:0 }}%"></span></div>
+        </td>
+        <td class="num">{{ p.nota|floatformat:0 }}</td>
+        <td class="num">{% if p.nota_anterior is None %}—{% else %}{{ p.nota_anterior|floatformat:0 }}{% endif %}</td>
+        <td class="num">
+          {% with d=p.delta_percentual %}
+            {% if d is None %}—{% else %}<span class="{% if d > 0 %}sobe{% elif d < 0 %}desce{% endif %}">{% if d > 0 %}+{% endif %}{{ d|floatformat:1 }}%</span>{% endif %}
+          {% endwith %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {% if radar or linha_do_tempo %}
+  <h2>Gráficos</h2>
+  <div class="graficos">
+    {% if radar %}<figure>{{ radar }}<figcaption><span class="legenda atual"></span>Atual{% if avaliacao.nota_geral_anterior is not None %} <span class="legenda anterior"></span>Anterior{% endif %}</figcaption></figure>{% endif %}
+    {% if linha_do_tempo %}<figure>{{ linha_do_tempo }}<figcaption>Índice geral ao longo das avaliações</figcaption></figure>{% endif %}
+  </div>
+  {% endif %}
+
+  <h2>Plano de ação</h2>
+  {% for grupo in grupos %}
+  <h3 class="grupo">{{ grupo.nome }} · nota {{ grupo.nota|floatformat:0 }}{% if grupo.prioritaria %} <span class="prioritaria">PONTO DE PARTIDA</span>{% endif %}</h3>
+  {% for item in grupo.itens %}
+    {% with r=item.recomendacao %}
+    <div class="acao">
+      <h3>{{ item.posicao }}. {{ r.titulo }}</h3>
+      <p>{{ r.descricao }}</p>
+      {% if r.kpi %}<p class="sutil">Como medir: {{ r.kpi }}</p>{% endif %}
+      <div class="etiquetas">
+        <span>{{ r.get_prazo_display }}</span>
+        <span>Prioridade: {% if r.prioridade == 'ALTO' %}Alta{% elif r.prioridade == 'MEDIO' %}Média{% else %}Baixa{% endif %}</span>
+        <span>Impacto: {{ r.get_impacto_display }}</span>
+        <span>Esforço: {{ r.get_esforco_display }}</span>
+      </div>
+    </div>
+    {% endwith %}
+  {% endfor %}
+  {% empty %}
+    <p class="sutil">Nenhuma recomendação do catálogo se aplica às notas desta avaliação.</p>
+  {% endfor %}
+
+  {% if analises %}
+  <h2>Análise das respostas abertas</h2>
+  {% for a in analises %}
+    <div class="analise">
+      <p class="sutil">{{ a.pergunta }}</p>
+      <p>{{ a.analise_qualitativa }}</p>
+      {% if a.pontos_fortes %}<p><strong>Pontos fortes</strong></p><ul>{% for t in a.pontos_fortes %}<li>{{ t }}</li>{% endfor %}</ul>{% endif %}
+      {% if a.riscos %}<p><strong>Riscos</strong></p><ul>{% for t in a.riscos %}<li>{{ t }}</li>{% endfor %}</ul>{% endif %}
+    </div>
+  {% endfor %}
+  {% endif %}
+</body>
+</html>

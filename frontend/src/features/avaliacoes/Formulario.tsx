@@ -15,15 +15,22 @@ const TEXTO_ESTADO = { salvando: 'Salvando rascunho…', salvo: 'Rascunho salvo'
 
 type Valores = Record<string, { valor_objetivo?: number | null; texto_aberto?: string }>
 
-type Props = { avaliacao: Avaliacao; questionario: Questionario; aoSubmeter: (avaliacao: Avaliacao) => void }
+type Props = {
+  avaliacao: Avaliacao
+  questionario: Questionario
+  aoSubmeter: (avaliacao: Avaliacao) => void
+  /** "Salvar e continuar depois" (UC02 FA01): chamado depois que o rascunho termina de salvar. */
+  aoSalvarESair: () => void
+}
 
-export function Formulario({ avaliacao, questionario, aoSubmeter }: Props) {
+export function Formulario({ avaliacao, questionario, aoSubmeter, aoSalvarESair }: Props) {
   const { agendador, estado } = useRascunho(avaliacao.id)
   const [valores, setValores] = useState<Valores>(() =>
     Object.fromEntries(avaliacao.respostas.map((r) => [r.pergunta, r])),
   )
   const [confirmando, setConfirmando] = useState(false)
   const [enviando, setEnviando] = useState(false)
+  const [saindo, setSaindo] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
 
   const objetivas = questionario.dimensoes.flatMap((d) => d.perguntas).filter((p) => p.tipo === 'OBJETIVA')
@@ -52,6 +59,18 @@ export function Formulario({ avaliacao, questionario, aoSubmeter }: Props) {
     }
   }
 
+  async function salvarESair() {
+    setSaindo(true)
+    setErro(null)
+    try {
+      await agendador.descarregar()
+      aoSalvarESair()
+    } catch {
+      setErro('Não foi possível salvar agora. Verifique a conexão e tente de novo.')
+      setSaindo(false)
+    }
+  }
+
   const respondidas = objetivas.length - faltam
   const progresso = objetivas.length ? (respondidas / objetivas.length) * 100 : 0
 
@@ -69,7 +88,7 @@ export function Formulario({ avaliacao, questionario, aoSubmeter }: Props) {
         }
       >
         {questionario.dimensoes.map((dimensao, i) => (
-          <Cartao key={dimensao.id} titulo={`${i + 1}. ${dimensao.nome}`}>
+          <Cartao key={dimensao.id} titulo={`${i + 1}. ${dimensao.nome}`} descricao={dimensao.descricao || undefined}>
             <div className="flex flex-col gap-8">
               {dimensao.perguntas.map((pergunta) => (
                 <CampoPergunta
@@ -110,7 +129,10 @@ export function Formulario({ avaliacao, questionario, aoSubmeter }: Props) {
               />
             </div>
           </div>
-          <Botao onClick={() => setConfirmando(true)} disabled={faltam > 0}>
+          <Botao variante="secundario" onClick={salvarESair} disabled={saindo || enviando}>
+            {saindo ? 'Salvando…' : 'Salvar e continuar depois'}
+          </Botao>
+          <Botao onClick={() => setConfirmando(true)} disabled={faltam > 0 || saindo}>
             {faltam > 0 ? `Faltam ${faltam}` : 'Enviar avaliação'}
           </Botao>
         </div>
@@ -146,7 +168,10 @@ function CampoPergunta({ pergunta, valor, aoResponder }: PropsCampo) {
   if (pergunta.tipo === 'DISSERTATIVA') {
     return (
       <label className="flex flex-col gap-3">
-        <span className="font-medium text-titulo">{pergunta.texto}</span>
+        <span className="flex flex-col gap-1">
+          <span className="text-xs font-medium tracking-wide uppercase">Resposta aberta · opcional</span>
+          <span className="font-medium text-titulo">{pergunta.texto}</span>
+        </span>
         <textarea
           className="min-h-28 rounded-lg border border-borda bg-superficie p-3 text-base text-titulo shadow-xs outline-none focus:border-destaque focus:ring-3 focus:ring-destaque/20 sm:text-sm"
           maxLength={5000}
@@ -158,7 +183,10 @@ function CampoPergunta({ pergunta, valor, aoResponder }: PropsCampo) {
   }
   return (
     <fieldset className="flex flex-col">
-      <legend className="mb-3 font-medium text-titulo">{pergunta.texto}</legend>
+      <legend className="mb-3 flex flex-col gap-1">
+        {pergunta.fator && <span className="text-xs font-medium tracking-wide uppercase">{pergunta.fator}</span>}
+        <span className="font-medium text-titulo">{pergunta.texto}</span>
+      </legend>
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-5">
         {ESCALA.map((rotulo, i) => (
           // O radio fica visível (foco e leitor de tela nativos); o cartão inteiro é a área de clique
