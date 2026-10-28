@@ -6,9 +6,11 @@ from django.test import TestCase, override_settings
 
 from apps.avaliacoes import llm
 from apps.avaliacoes.models import StatusAvaliacao
-from apps.avaliacoes.tasks import processar_respostas_abertas
+from apps.avaliacoes.services import calcular_pontuacao, selecionar_recomendacoes
+from apps.avaliacoes.tasks import processar_ia
 from apps.contas.tests.fabricas import criar_empresa
 from apps.questionarios.tests.fabricas import criar_questionario
+from apps.recomendacoes.tests.fabricas import criar_recomendacao
 
 from .fabricas import criar_avaliacao, responder_dissertativas, responder_objetivas
 
@@ -48,9 +50,36 @@ class ClienteLlmTests(TestCase):
             llm.analisar_resposta('Pergunta?', 'Resposta.')
 
 
+ACOES = [{'codigo': 'a'}, {'codigo': 'b'}, {'codigo': 'c'}]
+
+
+@mock.patch('apps.avaliacoes.llm.requests.post')
+class OrdenarRecomendacoesTests(TestCase):
+    def ordenar(self):
+        dimensoes = {'dados': {'nota': 25.0, 'peso': 2}, 'pessoas': {'nota': 100.0, 'peso': 1}}
+        return llm.ordenar_recomendacoes(50.0, dimensoes, ACOES, [{'dimensao': 'dados', 'analise': 'Planilhas soltas.', 'riscos': []}])
+
+    def test_retorna_a_nova_ordem_e_envia_as_notas_no_prompt(self, post):
+        post.return_value = resposta_ollama(json.dumps({'ordem': ['c', 'a', 'b']}))
+
+        self.assertEqual(self.ordenar(), ['c', 'a', 'b'])
+        prompt = post.call_args.kwargs['json']['prompt']
+        self.assertIn('"dados": {"nota": 25.0, "peso": 2}', prompt)
+        self.assertIn('Planilhas soltas.', prompt)
+
+    def test_rejeita_ordem_que_nao_e_permutacao_dos_codigos(self, post):
+        for ordem in (['a', 'b'], ['a', 'a', 'b'], ['a', 'b', 'x'], ['a', 'b', 'c', 'c']):
+            with self.subTest(ordem=ordem):
+                post.return_value = resposta_ollama(json.dumps({'ordem': ordem}))
+                with self.assertRaises(llm.FalhaInferencia):
+                    self.ordenar()
+
+
 @override_settings(CELERY_TASK_ALWAYS_EAGER=True, IA_MAX_TENTATIVAS=3)
 @mock.patch('apps.avaliacoes.tasks.llm.analisar_resposta')
 class ProcessarRespostasAbertasTests(TestCase):
+    """Sem catálogo cadastrado: o plano de ação fica vazio e só as respostas abertas vão para a IA."""
+
     def setUp(self):
         self.avaliacao = criar_avaliacao(criar_empresa(), criar_questionario(), status=StatusAvaliacao.PROCESSANDO_IA)
         responder_objetivas(self.avaliacao, [5, 1, 5])
@@ -58,7 +87,7 @@ class ProcessarRespostasAbertasTests(TestCase):
         self.aberta = self.avaliacao.respostas.get(texto_aberto__gt='')
 
     def executar(self):
-        processar_respostas_abertas.apply(args=[str(self.avaliacao.id)])
+        processar_ia.apply(args=[str(self.avaliacao.id), str(self.avaliacao.empresa_id)])
         self.avaliacao.refresh_from_db()
         self.aberta.refresh_from_db()
 
@@ -95,3 +124,56 @@ class ProcessarRespostasAbertasTests(TestCase):
 
         analisar.assert_not_called()
         self.assertEqual(self.avaliacao.status, StatusAvaliacao.CONCLUIDA)
+
+
+@override_settings(CELERY_TASK_ALWAYS_EAGER=True, IA_MAX_TENTATIVAS=2, TOTAL_RECOMENDACOES=2, IA_MAX_CANDIDATAS=30)
+@mock.patch('apps.avaliacoes.tasks.llm.ordenar_recomendacoes')
+@mock.patch('apps.avaliacoes.tasks.llm.analisar_resposta', return_value=ANALISE_VALIDA)
+class RanquearPlanoDeAcaoTests(TestCase):
+    """Três recomendações aplicáveis e plano de 2: a IA ranqueia as três e só as 2 primeiras ficam (UC12)."""
+
+    def setUp(self):
+        self.avaliacao = criar_avaliacao(criar_empresa(), criar_questionario(), status=StatusAvaliacao.PROCESSANDO_IA)
+        responder_objetivas(self.avaliacao, [5, 1, 5])
+        responder_dissertativas(self.avaliacao)
+        calcular_pontuacao(self.avaliacao)
+        for codigo in ('a', 'b', 'c'):
+            criar_recomendacao(codigo, 'dados', (0, 40))
+        selecionar_recomendacoes(self.avaliacao)
+
+    def executar(self):
+        processar_ia.apply(args=[str(self.avaliacao.id), str(self.avaliacao.empresa_id)])
+        self.avaliacao.refresh_from_db()
+        return list(self.avaliacao.recomendacoes.values_list('recomendacao__codigo', flat=True))
+
+    def test_antes_da_ia_vale_a_ordem_das_faixas(self, analisar, ordenar):
+        self.assertEqual(list(self.avaliacao.recomendacoes.values_list('recomendacao__codigo', flat=True)), ['a', 'b'])
+
+    def test_ia_ranqueia_todas_as_aplicaveis_com_notas_pesos_e_analises(self, analisar, ordenar):
+        ordenar.return_value = ['c', 'a', 'b']
+
+        self.assertEqual(self.executar(), ['c', 'a'])
+        self.assertTrue(self.avaliacao.recomendacoes_ordenadas_ia)
+        self.assertEqual(self.avaliacao.versao_prompts_ia, llm.VERSAO_PROMPTS)
+        self.assertEqual(self.avaliacao.status, StatusAvaliacao.CONCLUIDA)
+        nota_geral, dimensoes, acoes, analises = ordenar.call_args.args
+        self.assertEqual(nota_geral, 50.0)
+        self.assertEqual(dimensoes, {'dados': {'nota': 25.0, 'peso': 2.0}, 'pessoas': {'nota': 100.0, 'peso': 1.0}})
+        self.assertEqual([a['codigo'] for a in acoes], ['a', 'b', 'c'])
+        self.assertEqual(analises, [{'dimensao': 'dados', 'analise': 'Base de dados madura.', 'riscos': []}])
+
+    def test_falha_persistente_marca_erro_e_mantem_a_ordem_das_faixas(self, analisar, ordenar):
+        ordenar.side_effect = llm.FalhaInferencia('ollama fora do ar')
+
+        self.assertEqual(self.executar(), ['a', 'b'])
+        self.assertFalse(self.avaliacao.recomendacoes_ordenadas_ia)
+        self.assertEqual(self.avaliacao.status, StatusAvaliacao.ERRO_PROCESSAMENTO)
+        self.assertEqual(ordenar.call_count, 3)  # 1 tentativa + 2 retentativas
+
+    def test_plano_ja_ranqueado_nao_e_reenviado(self, analisar, ordenar):
+        self.avaliacao.recomendacoes_ordenadas_ia = True
+        self.avaliacao.save()
+
+        self.executar()
+
+        ordenar.assert_not_called()
