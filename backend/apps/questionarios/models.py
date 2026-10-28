@@ -39,15 +39,24 @@ class Questionario(models.Model):
 
     @transaction.atomic
     def nova_versao(self, versao):
-        """Copia dimensões e perguntas para uma nova versão, ainda não publicada."""
+        """Copia dimensões, fatores e perguntas para uma nova versão, ainda não publicada."""
         copia = Questionario.objects.create(versao=versao, descricao=self.descricao)
-        for dimensao in self.dimensoes.prefetch_related('perguntas'):
+        for dimensao in self.dimensoes.prefetch_related('fatores', 'perguntas'):
             nova_dimensao = Dimensao.objects.create(
-                questionario=copia, codigo=dimensao.codigo, nome=dimensao.nome, peso=dimensao.peso,
-                ordem=dimensao.ordem,
+                questionario=copia, codigo=dimensao.codigo, nome=dimensao.nome, descricao=dimensao.descricao,
+                peso=dimensao.peso, ordem=dimensao.ordem, ativa=dimensao.ativa,
             )
+            novos_fatores = {
+                f.id: Fator.objects.create(
+                    dimensao=nova_dimensao, codigo=f.codigo, nome=f.nome, descricao=f.descricao, ordem=f.ordem,
+                )
+                for f in dimensao.fatores.all()
+            }
             Pergunta.objects.bulk_create(
-                Pergunta(dimensao=nova_dimensao, texto=p.texto, tipo=p.tipo, peso=p.peso, ordem=p.ordem, ativa=p.ativa)
+                Pergunta(
+                    dimensao=nova_dimensao, fator=novos_fatores.get(p.fator_id), texto=p.texto, tipo=p.tipo,
+                    peso=p.peso, ordem=p.ordem, ativa=p.ativa,
+                )
                 for p in dimensao.perguntas.all()
             )
         return copia
@@ -88,8 +97,12 @@ class Dimensao(EstruturaVersionada):
                   'e o catálogo de recomendações. Se ficar em branco, é gerado a partir do nome.',
     )
     nome = models.CharField(max_length=255)
+    descricao = models.TextField('descrição', blank=True)
     peso = models.FloatField(help_text='Peso da dimensão no índice geral de prontidão.')
     ordem = models.PositiveSmallIntegerField(default=0)
+    ativa = models.BooleanField(
+        default=True, help_text='Inativa: some do questionário e do cálculo. Não vale para a versão publicada (UC08).',
+    )
 
     class Meta:
         ordering = ['ordem', 'nome']
@@ -104,13 +117,50 @@ class Dimensao(EstruturaVersionada):
     def __str__(self):
         return self.nome
 
+    def clean(self):
+        if not self.ativa and self.questionario_id and self.questionario.ativo:
+            raise ValidationError(
+                {'ativa': 'A dimensão faz parte da versão publicada e não pode ser inativada. '
+                          'Crie uma nova versão sem ela.'}
+            )
+
+    def save(self, *args, **kwargs):
+        if not self.codigo:
+            self.codigo = slugify(self.nome)[:50]
+        self.clean()
+        super().save(*args, **kwargs)
+
+    def get_questionario(self):
+        return self.questionario
+
+
+class Fator(EstruturaVersionada):
+    """Fator de prontidão (Quadro 11): agrupa as perguntas de uma dimensão. A nota continua sendo por dimensão."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    dimensao = models.ForeignKey(Dimensao, on_delete=models.CASCADE, related_name='fatores')
+    codigo = models.SlugField(max_length=50, blank=True, help_text='Se ficar em branco, é gerado a partir do nome.')
+    nome = models.CharField(max_length=255)
+    descricao = models.TextField('descrição', blank=True)
+    ordem = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        ordering = ['ordem', 'nome']
+        verbose_name_plural = 'fatores'
+        constraints = [
+            models.UniqueConstraint(fields=['dimensao', 'codigo'], name='fator_codigo_unico_na_dimensao'),
+        ]
+
+    def __str__(self):
+        return self.nome
+
     def save(self, *args, **kwargs):
         if not self.codigo:
             self.codigo = slugify(self.nome)[:50]
         super().save(*args, **kwargs)
 
     def get_questionario(self):
-        return self.questionario
+        return self.dimensao.questionario
 
 
 class TipoPergunta(models.TextChoices):
@@ -121,6 +171,10 @@ class TipoPergunta(models.TextChoices):
 class Pergunta(EstruturaVersionada):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     dimensao = models.ForeignKey(Dimensao, on_delete=models.CASCADE, related_name='perguntas')
+    fator = models.ForeignKey(
+        Fator, on_delete=models.PROTECT, null=True, blank=True, related_name='perguntas',
+        help_text='Fator da mesma dimensão ao qual a pergunta pertence.',
+    )
     texto = models.TextField()
     tipo = models.CharField(max_length=20, choices=TipoPergunta.choices)
     peso = models.FloatField(help_text='Peso da pergunta dentro da dimensão.')
@@ -135,6 +189,14 @@ class Pergunta(EstruturaVersionada):
 
     def __str__(self):
         return self.texto[:80]
+
+    def clean(self):
+        if self.fator_id and self.dimensao_id and self.fator.dimensao_id != self.dimensao_id:
+            raise ValidationError({'fator': 'O fator precisa ser da mesma dimensão da pergunta.'})
+
+    def save(self, *args, **kwargs):
+        self.clean()
+        super().save(*args, **kwargs)
 
     def get_questionario(self):
         return self.dimensao.questionario
