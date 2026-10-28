@@ -1,5 +1,6 @@
 import { useRef, useState, type PointerEvent, type SubmitEvent } from 'react'
 import { ArrowRight, Eye, EyeOff } from 'lucide-react'
+import { Link } from 'react-router'
 import { entrar } from './authApi'
 import { ErroApi } from '@/api/cliente'
 import { Alerta } from '@/components/Alerta'
@@ -157,6 +158,10 @@ export function Login({ aoEntrar }: { aoEntrar: () => void }) {
                 </button>
               </span>
             </label>
+
+            <Link to="/recuperar-senha" className="-mt-2 self-end text-sm text-destaque underline-offset-4 hover:underline">
+              Esqueci a minha senha
+            </Link>
 
             {erro && <Alerta tipo="erro">{erro}</Alerta>}
 

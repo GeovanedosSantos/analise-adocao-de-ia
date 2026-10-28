@@ -4,9 +4,11 @@ from .models import Dimensao, Pergunta, Questionario
 
 
 class PerguntaSerializer(serializers.ModelSerializer):
+    fator = serializers.CharField(source='fator.nome', default=None)
+
     class Meta:
         model = Pergunta
-        fields = ['id', 'texto', 'tipo', 'ordem']
+        fields = ['id', 'texto', 'tipo', 'ordem', 'fator']
 
 
 class DimensaoSerializer(serializers.ModelSerializer):
@@ -14,11 +16,11 @@ class DimensaoSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Dimensao
-        fields = ['id', 'codigo', 'nome', 'ordem', 'perguntas']
+        fields = ['id', 'codigo', 'nome', 'descricao', 'ordem', 'perguntas']
 
 
 class QuestionarioSerializer(serializers.ModelSerializer):
-    dimensoes = DimensaoSerializer(many=True)
+    dimensoes = DimensaoSerializer(many=True, source='dimensoes_ativas')
 
     class Meta:
         model = Questionario

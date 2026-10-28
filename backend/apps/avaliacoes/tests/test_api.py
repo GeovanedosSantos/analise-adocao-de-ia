@@ -1,19 +1,30 @@
+import threading
 from datetime import timedelta
-from unittest import mock
+from unittest import mock, skipUnless
 
+from django.test import override_settings
 from django.utils import timezone
 from rest_framework.test import APITestCase
 
 from apps.avaliacoes.models import Avaliacao, StatusAvaliacao
-from apps.avaliacoes.services import calcular_pontuacao
+from apps.avaliacoes.services import calcular_pontuacao, selecionar_recomendacoes
 from apps.contas.models import AuditoriaAcesso
 from apps.contas.tests.fabricas import criar_empresa, criar_usuario
 from apps.questionarios.models import Questionario, TipoPergunta
 from apps.questionarios.tests.fabricas import criar_questionario, perguntas
+from apps.recomendacoes.tests.fabricas import criar_recomendacao
 
 from .fabricas import criar_avaliacao, responder_dissertativas, responder_objetivas
 
 URL = '/api/v1/avaliacoes/'
+
+
+def weasyprint_instalado():
+    try:
+        import weasyprint  # noqa: F401
+    except (ImportError, OSError):  # OSError: Pango ausente no sistema
+        return False
+    return True
 
 
 class ApiTestCase(APITestCase):
@@ -45,6 +56,24 @@ class HistoricoTests(ApiTestCase):
         self.assertEqual([item['id'] for item in resposta.data], [str(propria.id)])
         self.assertEqual(resposta.data[0]['pontuacoes'][0]['dimensao_codigo'], 'dados')
         self.assertNotIn('respostas', resposta.data[0])
+
+    def test_listagem_e_historico_trazem_deltas_derivados(self):
+        for valores, dias_atras in (([5, 1, 5], 30), ([5, 5, 5], 0)):
+            avaliacao = criar_avaliacao(
+                self.empresa, self.questionario, status=StatusAvaliacao.CONCLUIDA,
+                data_fim=timezone.now() - timedelta(days=dias_atras),
+            )
+            responder_objetivas(avaliacao, valores)
+            calcular_pontuacao(avaliacao)
+
+        listagem = self.client.get(URL).data
+        historico = self.client.get(f'{URL}historico/').data
+
+        self.assertEqual([a['delta_nota_geral'] for a in listagem], [100.0, None])
+        self.assertEqual([a['nota_geral_anterior'] for a in listagem], [50.0, None])
+        self.assertEqual([p['delta_percentual'] for p in historico[0]['pontuacoes']], [300.0, 0.0])
+        self.assertEqual([p['nota_anterior'] for p in historico[0]['pontuacoes']], [25.0, 100.0])
+        self.assertEqual([p['delta_percentual'] for p in historico[1]['pontuacoes']], [None, None])
 
 
 class CriarAvaliacaoTests(ApiTestCase):
@@ -169,7 +198,7 @@ class RascunhoTests(ApiTestCase):
         self.assertEqual(resposta.status_code, 409)
 
 
-@mock.patch('apps.avaliacoes.services.processar_respostas_abertas.delay')
+@mock.patch('apps.avaliacoes.services.processar_ia.delay')
 class SubmeterTests(ApiTestCase):
     def setUp(self):
         super().setUp()
@@ -193,7 +222,7 @@ class SubmeterTests(ApiTestCase):
         self.assertEqual(resposta.status_code, 202)
         self.assertEqual(resposta.data['status'], StatusAvaliacao.PROCESSANDO_IA)
         self.assertAlmostEqual(resposta.data['nota_geral'], 50.0)
-        delay.assert_called_once_with(str(self.avaliacao.id))
+        delay.assert_called_once_with(str(self.avaliacao.id), str(self.empresa.id))
 
     def test_sem_respostas_abertas_conclui_sem_chamar_a_ia(self, delay):
         responder_objetivas(self.avaliacao, [5, 1, 5])
@@ -216,10 +245,10 @@ class SubmeterTests(ApiTestCase):
 
         resposta = self.client.post(self.url)
 
-        self.assertEqual(resposta.data['delta_nota_geral'], 50.0)
+        self.assertEqual(resposta.data['delta_nota_geral'], 100.0)
         self.assertEqual(
             [(p['dimensao_codigo'], p['delta_percentual']) for p in resposta.data['pontuacoes']],
-            [('dados', 75.0), ('pessoas', 0.0)],
+            [('dados', 300.0), ('pessoas', 0.0)],
         )
 
     def test_nao_submete_duas_vezes(self, delay):
@@ -238,3 +267,142 @@ class SubmeterTests(ApiTestCase):
         resposta = self.client.get(f'{URL}{self.avaliacao.id}/status/')
 
         self.assertEqual(resposta.data, {'id': str(self.avaliacao.id), 'status': StatusAvaliacao.PROCESSANDO_IA})
+
+    def test_monta_o_plano_de_acao_e_enfileira_a_ia_para_ordenar(self, delay):
+        criar_recomendacao('dados-1', 'dados', (0, 40))
+        criar_recomendacao('dados-2', 'dados', (0, 40))
+        responder_objetivas(self.avaliacao, [5, 1, 5])
+
+        with self.captureOnCommitCallbacks(execute=True):
+            resposta = self.client.post(self.url)
+
+        self.assertEqual(resposta.status_code, 202)
+        self.assertEqual([(r['posicao'], r['codigo']) for r in resposta.data['recomendacoes']], [(1, 'dados-1'), (2, 'dados-2')])
+        self.assertFalse(resposta.data['recomendacoes_ordenadas_ia'])
+        delay.assert_called_once_with(str(self.avaliacao.id), str(self.empresa.id))
+
+    def test_uma_recomendacao_so_nao_precisa_da_ia(self, delay):
+        criar_recomendacao('dados-1', 'dados', (0, 40))
+        responder_objetivas(self.avaliacao, [5, 1, 5])
+
+        resposta = self.client.post(self.url)
+
+        self.assertEqual(resposta.data['status'], StatusAvaliacao.CONCLUIDA)
+        self.assertEqual(len(resposta.data['recomendacoes']), 1)
+
+
+@override_settings(PDF_TIMEOUT=5, PDF_TENTATIVAS=2)
+@mock.patch('apps.avaliacoes.relatorio._converter', return_value=b'%PDF-1.7 teste')
+class PdfTests(ApiTestCase):
+    def setUp(self):
+        super().setUp()
+        self.avaliacao = criar_avaliacao(
+            self.empresa, self.questionario, status=StatusAvaliacao.CONCLUIDA, data_fim=timezone.now(),
+        )
+        responder_objetivas(self.avaliacao, [5, 1, 5])
+        calcular_pontuacao(self.avaliacao)
+        criar_recomendacao('dados-1', 'dados', (0, 40), titulo='Fazer o inventário dos dados')
+        selecionar_recomendacoes(self.avaliacao)
+        self.url = f'{URL}{self.avaliacao.id}/pdf/'
+
+    def test_baixa_o_pdf_com_notas_e_plano_de_acao(self, converter):
+        resposta = self.client.get(self.url)
+
+        self.assertEqual(resposta.status_code, 200)
+        self.assertEqual(resposta['Content-Type'], 'application/pdf')
+        self.assertIn('attachment; filename="avaliacao-prontidao-ia-', resposta['Content-Disposition'])
+        self.assertEqual(resposta.content, b'%PDF-1.7 teste')
+        html = converter.call_args.args[0]
+        self.assertIn('Empresa A', html)
+        self.assertIn('1. Fazer o inventário dos dados', html)
+        self.assertIn('PRIORITÁRIA', html)
+
+    def test_falha_na_conversao_e_tentada_de_novo(self, converter):
+        converter.side_effect = [OSError('pango'), b'%PDF-1.7 segunda']
+
+        resposta = self.client.get(self.url)
+
+        self.assertEqual(resposta.status_code, 200)
+        self.assertEqual(converter.call_count, 2)
+
+    def test_falha_persistente_responde_503(self, converter):
+        converter.side_effect = OSError('pango')
+
+        resposta = self.client.get(self.url)
+
+        self.assertEqual((resposta.status_code, resposta.data['detail'].code), (503, 'pdf_indisponivel'))
+        self.assertEqual(converter.call_count, 2)
+
+    @override_settings(PDF_TIMEOUT=0.05)
+    def test_estouro_de_tempo_responde_503_sem_nova_tentativa(self, converter):
+        liberar = threading.Event()
+        converter.side_effect = lambda html: liberar.wait(1) and b''
+
+        resposta = self.client.get(self.url)
+        liberar.set()
+
+        self.assertEqual((resposta.status_code, resposta.data['detail'].code), (503, 'pdf_timeout'))
+        self.assertEqual(converter.call_count, 1)
+
+    def test_rascunho_nao_tem_pdf(self, converter):
+        rascunho = criar_avaliacao(self.empresa, self.questionario)
+
+        resposta = self.client.get(f'{URL}{rascunho.id}/pdf/')
+
+        self.assertEqual(resposta.status_code, 409)
+        converter.assert_not_called()
+
+    def test_pdf_de_outra_empresa_e_bloqueado(self, converter):
+        alheia = criar_avaliacao(criar_empresa('Empresa B'), self.questionario, status=StatusAvaliacao.CONCLUIDA)
+
+        resposta = self.client.get(f'{URL}{alheia.id}/pdf/')
+
+        self.assertEqual(resposta.status_code, 403)
+        converter.assert_not_called()
+
+
+@skipUnless(weasyprint_instalado(), 'WeasyPrint e Pango não estão instalados neste ambiente')
+class PdfRealTests(ApiTestCase):
+    def test_gera_um_pdf_valido_dentro_do_tempo(self):
+        avaliacao = criar_avaliacao(self.empresa, self.questionario, status=StatusAvaliacao.CONCLUIDA, data_fim=timezone.now())
+        responder_objetivas(avaliacao, [5, 1, 5])
+        calcular_pontuacao(avaliacao)
+        criar_recomendacao('dados-1', 'dados', (0, 40))
+        selecionar_recomendacoes(avaliacao)
+
+        resposta = self.client.get(f'{URL}{avaliacao.id}/pdf/')
+
+        self.assertEqual(resposta.status_code, 200)
+        self.assertTrue(resposta.content.startswith(b'%PDF'))
+
+
+class DescartarRascunhoTests(ApiTestCase):
+    def test_recomecar_apaga_as_respostas_e_mantem_o_rascunho(self):
+        rascunho = criar_avaliacao(self.empresa, self.questionario)
+        responder_objetivas(rascunho, [5, 1, 5])
+
+        resposta = self.client.post(f'{URL}{rascunho.id}/descartar/')
+
+        self.assertEqual(resposta.status_code, 204)
+        self.assertFalse(rascunho.respostas.exists())
+        self.assertTrue(Avaliacao.objects.filter(pk=rascunho.pk, status=StatusAvaliacao.RASCUNHO).exists())
+
+    def test_avaliacao_enviada_nao_pode_ser_descartada(self):
+        enviada = criar_avaliacao(self.empresa, self.questionario, status=StatusAvaliacao.CONCLUIDA)
+
+        self.assertEqual(self.client.post(f'{URL}{enviada.id}/descartar/').status_code, 409)
+
+
+class PadroesDaApiTests(ApiTestCase):
+    def test_resposta_traz_o_id_de_correlacao(self):
+        gerado = self.client.get(URL)
+        repassado = self.client.get(URL, HTTP_X_REQUEST_ID='abc-123')
+
+        self.assertRegex(gerado['X-Request-ID'], r'^[0-9a-f]{32}$')
+        self.assertEqual(repassado['X-Request-ID'], 'abc-123')
+
+    def test_contrato_openapi_publicado(self):
+        resposta = self.client.get('/api/v1/schema/')
+
+        self.assertEqual(resposta.status_code, 200)
+        self.assertIn(b'/api/v1/avaliacoes/{id}/pdf/', resposta.content)

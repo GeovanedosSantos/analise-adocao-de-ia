@@ -11,7 +11,7 @@ Duas camadas independentes:
 import logging
 from contextlib import contextmanager
 
-from django.db import connection
+from django.db import connection, transaction
 from django.http import Http404
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import BasePermission
@@ -25,6 +25,14 @@ def definir_empresa_rls(empresa_id):
     """Define o tenant da transação atual para as políticas de RLS."""
     with connection.cursor() as cursor:
         cursor.execute("SELECT set_config('app.empresa_id', %s, true)", [str(empresa_id)])
+
+
+@contextmanager
+def transacao_da_empresa(empresa_id):
+    """Transação com o tenant definido, para código fora de uma requisição (ex.: workers do Celery)."""
+    with transaction.atomic():
+        definir_empresa_rls(empresa_id)
+        yield
 
 
 @contextmanager

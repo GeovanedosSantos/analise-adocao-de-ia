@@ -12,8 +12,7 @@ type Props = {
   rotuloAnterior?: string
 }
 
-/** Nota anterior da dimensão: o delta do backend é atual − anterior, então dá para reconstruir sem outra chamada. */
-const notaAnterior = (p: Pontuacao) => (p.delta_percentual === null ? undefined : p.nota - p.delta_percentual)
+const notaAnterior = (p: Pontuacao) => p.nota_anterior ?? undefined
 
 /**
  * Lista clicável das dimensões (barra de 0 a 100 com traço na nota anterior) ao lado do radar.
@@ -27,9 +26,11 @@ export function ExploradorDimensoes({ pontuacoes, corDe, selecionada, aoSelecion
     anterior: notaAnterior(p),
   }))
   const comAnterior = radar.some((p) => p.anterior !== undefined)
+  const escolhida = pontuacoes.find((p) => p.dimensao_codigo === selecionada)
 
   return (
     <div className="grid grid-cols-1 items-center gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
+      <div className="flex flex-col gap-4">
       <ul className="flex flex-col gap-1.5">
         {pontuacoes.map((p) => {
           const ativa = p.dimensao_codigo === selecionada
@@ -78,6 +79,21 @@ export function ExploradorDimensoes({ pontuacoes, corDe, selecionada, aoSelecion
           )
         })}
       </ul>
+      {escolhida && escolhida.fatores.length > 0 && (
+        <div className="flex flex-col gap-2 px-1">
+          <p className="text-sm">
+            Fatores avaliados em <span className="font-medium text-titulo">{escolhida.dimensao_nome}</span>
+          </p>
+          <ul className="flex flex-wrap gap-1.5">
+            {escolhida.fatores.map((fator) => (
+              <li key={fator} className="rounded-full bg-suave px-2.5 py-1 text-xs font-medium text-titulo">
+                {fator}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      </div>
 
       <div className="flex flex-col gap-2">
         <GraficoRadar dados={radar} comAnterior={comAnterior} selecionada={selecionada} aoSelecionar={aoSelecionar} />

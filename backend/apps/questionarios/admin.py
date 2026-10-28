@@ -1,6 +1,6 @@
 from django.contrib import admin, messages
 
-from .models import Dimensao, Pergunta, Questionario
+from .models import Dimensao, Fator, Pergunta, Questionario
 
 
 class DimensaoInline(admin.TabularInline):
@@ -8,9 +8,20 @@ class DimensaoInline(admin.TabularInline):
     extra = 0
 
 
+class FatorInline(admin.TabularInline):
+    model = Fator
+    extra = 0
+
+
 class PerguntaInline(admin.TabularInline):
     model = Pergunta
     extra = 0
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        # Só os fatores da dimensão em edição
+        if db_field.name == 'fator' and request.resolver_match.kwargs.get('object_id'):
+            kwargs['queryset'] = Fator.objects.filter(dimensao_id=request.resolver_match.kwargs['object_id'])
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
 
 @admin.register(Questionario)
@@ -32,13 +43,13 @@ class QuestionarioAdmin(admin.ModelAdmin):
 
 @admin.register(Dimensao)
 class DimensaoAdmin(admin.ModelAdmin):
-    list_display = ['nome', 'codigo', 'questionario', 'peso', 'ordem']
-    list_filter = ['questionario']
-    inlines = [PerguntaInline]
+    list_display = ['nome', 'codigo', 'questionario', 'peso', 'ordem', 'ativa']
+    list_filter = ['questionario', 'ativa']
+    inlines = [FatorInline, PerguntaInline]
 
 
 @admin.register(Pergunta)
 class PerguntaAdmin(admin.ModelAdmin):
-    list_display = ['texto', 'dimensao', 'tipo', 'peso', 'ativa']
+    list_display = ['texto', 'dimensao', 'fator', 'tipo', 'peso', 'ativa']
     list_filter = ['dimensao__questionario', 'tipo', 'ativa']
     list_editable = ['ativa']

@@ -55,7 +55,8 @@ export function PaginaHistorico({ aoExpirarSessao }: Props) {
   const comNota = avaliacoes.filter((a) => a.nota_geral !== null).reverse()
   const notas = comNota.map((a) => a.nota_geral as number)
   const melhor = comNota.reduce<AvaliacaoHistorico | null>((m, a) => (!m || (a.nota_geral ?? 0) > (m.nota_geral ?? 0) ? a : m), null)
-  const evolucao = notas.length >= 2 ? notas[notas.length - 1] - notas[0] : null
+  // Variação percentual da primeira para a última (RF12); sem base quando a primeira nota é 0
+  const evolucao = notas.length >= 2 && notas[0] > 0 ? ((notas[notas.length - 1] - notas[0]) / notas[0]) * 100 : null
   const dataDe = (a: AvaliacaoHistorico) => formatoData.format(new Date(a.data_fim ?? a.data_inicio))
 
   return (
@@ -73,7 +74,7 @@ export function PaginaHistorico({ aoExpirarSessao }: Props) {
         />
         <Indicador
           rotulo="Evolução total"
-          valor={evolucao === null ? '—' : `${evolucao > 0 ? '+' : ''}${evolucao.toFixed(1).replace('.', ',')} pts`}
+          valor={evolucao === null ? '—' : `${evolucao > 0 ? '+' : ''}${evolucao.toFixed(1).replace('.', ',')}%`}
           rodape="da primeira para a última avaliação"
           serie={notas}
         />
@@ -102,7 +103,6 @@ export function PaginaHistorico({ aoExpirarSessao }: Props) {
                 <th>Versão</th>
                 <th>Índice geral</th>
                 <th>Nível</th>
-                <th>Situação</th>
                 <th className="pr-0">
                   <span className="sr-only">Resultado</span>
                 </th>
@@ -139,9 +139,6 @@ export function PaginaHistorico({ aoExpirarSessao }: Props) {
                       <Delta valor={a.delta_nota_geral} />
                     </td>
                     <td className="whitespace-nowrap">{a.nivel_prontidao ? `${a.nivel_prontidao} de 5` : '—'}</td>
-                    <td className="whitespace-nowrap">
-                      <Situacao apta={a.apta} />
-                    </td>
                     <td className="pr-0 text-right whitespace-nowrap">
                       <BotaoLink to={`/resultados/${a.id}`} variante="link">
                         Ver resultado
@@ -159,18 +156,5 @@ export function PaginaHistorico({ aoExpirarSessao }: Props) {
         <Comparacao key={avaliacoesComparadas.map((a) => a.id).join()} avaliacoes={avaliacoesComparadas} />
       )}
     </Pagina>
-  )
-}
-
-function Situacao({ apta }: { apta: boolean | null }) {
-  return (
-    <span
-      className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium ${
-        apta ? 'bg-green-50 text-green-700 dark:bg-green-950/60 dark:text-green-400' : 'bg-suave text-texto'
-      }`}
-    >
-      <span aria-hidden className={`size-1.5 rounded-full ${apta ? 'bg-current' : 'bg-texto'}`} />
-      {apta ? 'Apta' : 'Não apta'}
-    </span>
   )
 }

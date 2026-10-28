@@ -3,7 +3,7 @@ import { Delta } from './Delta'
 import type { Avaliacao } from '@/features/avaliacoes/avaliacoesApi'
 
 type Props = {
-  avaliacao: Pick<Avaliacao, 'nota_geral' | 'delta_nota_geral' | 'nivel_maturidade'>
+  avaliacao: Pick<Avaliacao, 'nota_geral' | 'nota_geral_anterior' | 'delta_nota_geral' | 'nivel_prontidao'>
   /** Data da avaliação anterior, para "desde …"; sem ela, mostra que é a primeira. */
   desde?: string | null
   className?: string
@@ -11,7 +11,7 @@ type Props = {
 
 /** Cartão principal de uma avaliação: anel do índice geral, variação, nível em degraus e situação. */
 export function ResumoAvaliacao({ avaliacao, desde, className = '' }: Props) {
-  const nivel = avaliacao.nivel_maturidade ?? 0
+  const nivel = avaliacao.nivel_prontidao ?? 0
   return (
     <section className={`cartao flex items-center overflow-hidden p-6 ${className}`}>
       {/* Brilho decorativo no canto */}
@@ -26,7 +26,9 @@ export function ResumoAvaliacao({ avaliacao, desde, className = '' }: Props) {
             <h2 className="text-2xl">Índice geral de prontidão</h2>
             <p className="flex flex-wrap items-center gap-2 text-base">
               <Delta valor={avaliacao.delta_nota_geral} />
-              {avaliacao.delta_nota_geral === null ? 'Primeira avaliação da empresa' : desde ? `desde ${desde}` : 'vs avaliação anterior'}
+              {avaliacao.nota_geral_anterior === null
+                ? 'Primeira avaliação da empresa'
+                : `${desde ? `desde ${desde}` : 'vs avaliação anterior'} (antes: ${avaliacao.nota_geral_anterior.toFixed(1)})`}
             </p>
           </div>
 

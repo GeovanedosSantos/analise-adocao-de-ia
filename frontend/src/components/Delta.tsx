@@ -12,7 +12,7 @@ const delta = tv({
   },
 })
 
-const formato = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1, signDisplay: 'exceptZero' })
+const formato = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1, signDisplay: 'exceptZero' })
 
 type Props = {
   valor: number | null | undefined
@@ -20,7 +20,7 @@ type Props = {
   referencia?: string
 }
 
-/** Diferença em pontos para a avaliação anterior (RF12). Sem anterior (null), não mostra nada. */
+/** Variação percentual em relação à avaliação anterior (RF12). Sem variação (null), não mostra nada. */
 export function Delta({ valor, referencia = 'à avaliação anterior' }: Props) {
   if (valor == null) return null
   // Arredonda antes de comparar: 0,04 aparece como "0,0" e não deve vir com seta para cima
@@ -30,7 +30,7 @@ export function Delta({ valor, referencia = 'à avaliação anterior' }: Props) 
   return (
     <span className={delta({ sentido })} title={`Em relação ${referencia}`}>
       <Icone aria-hidden size={13} strokeWidth={2.5} />
-      {formato.format(arredondado)} pts
+      {formato.format(arredondado)}%
       <span className="sr-only"> em relação {referencia}</span>
     </span>
   )
