@@ -48,14 +48,19 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'corsheaders',
     'rest_framework',
+    'drf_spectacular',
     'apps.contas',
     'apps.questionarios',
     'apps.avaliacoes',
+    'apps.recomendacoes',
 ]
 
 MIDDLEWARE = [
+    'config.correlacao.IdCorrelacaoMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -156,7 +161,45 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
     ),
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    # Limite de taxa (OWASP): por IP sem login, por usuário com login e mais apertado em login e senha
+    'DEFAULT_THROTTLE_CLASSES': (
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle',
+        'rest_framework.throttling.ScopedRateThrottle',
+    ),
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': os.getenv('LIMITE_ANONIMO', '60/min'),
+        'user': os.getenv('LIMITE_USUARIO', '600/min'),
+        'login': os.getenv('LIMITE_LOGIN', '10/min'),
+        'senha': os.getenv('LIMITE_SENHA', '5/min'),
+    },
 }
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'API de prontidão organizacional para adoção de IA',
+    'VERSION': '1.0.0',
+    'SCHEMA_PATH_PREFIX': '/api/v1',
+}
+
+# CORS restrito: em desenvolvimento o Vite faz proxy de /api, então nenhuma origem externa é liberada
+CORS_ALLOWED_ORIGINS = [o for o in os.getenv('CORS_ALLOWED_ORIGINS', '').split(',') if o]
+
+# Cabeçalhos de segurança
+X_FRAME_OPTIONS = 'DENY'
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_REFERRER_POLICY = 'same-origin'
+
+# E-mail de recuperação de senha (UC01 FA01). Em desenvolvimento, o e-mail sai no console.
+EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')
+EMAIL_HOST = os.getenv('EMAIL_HOST', 'localhost')
+EMAIL_PORT = int(os.getenv('EMAIL_PORT', '587'))
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
+EMAIL_USE_TLS = env_bool('EMAIL_USE_TLS', True)
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'nao-responda@localhost')
+# Endereço do front-end, usado no link de redefinição de senha
+FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:5173')
 
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=30),
@@ -183,11 +226,17 @@ if not DEBUG:
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
+    # Toda linha leva o id de correlação da requisição ou da tarefa (seção 5.3)
+    'filters': {'correlacao': {'()': 'config.correlacao.IdCorrelacaoFiltro'}},
+    'formatters': {
+        'estruturado': {'format': '%(asctime)s %(levelname)s [%(id_correlacao)s] %(name)s: %(message)s'},
+    },
     'handlers': {
-        'console': {'class': 'logging.StreamHandler'},
+        'console': {'class': 'logging.StreamHandler', 'filters': ['correlacao'], 'formatter': 'estruturado'},
     },
     'loggers': {
         'auditoria': {'handlers': ['console'], 'level': 'WARNING'},
+        'apps': {'handlers': ['console'], 'level': 'INFO'},
     },
 }
 
@@ -204,9 +253,19 @@ CELERY_TASK_TIME_LIMIT = 10 * 60
 OLLAMA_URL = os.getenv('OLLAMA_URL', 'http://localhost:11434')
 OLLAMA_MODEL = os.getenv('OLLAMA_MODEL', 'llama3.1')
 OLLAMA_TIMEOUT = int(os.getenv('OLLAMA_TIMEOUT', '60'))
+# Janela de contexto em tokens: o prompt de ranking leva até IA_MAX_CANDIDATAS ações e as análises
+OLLAMA_NUM_CTX = int(os.getenv('OLLAMA_NUM_CTX', '8192'))
 IA_MAX_TENTATIVAS = int(os.getenv('IA_MAX_TENTATIVAS', '3'))
 
 
-# Motor de pontuação (RF05): nota geral mínima (0 a 100) para a empresa ser considerada apta.
-# Valor provisório até a validação do modelo com os especialistas.
-NOTA_CORTE_APTIDAO = float(os.getenv('NOTA_CORTE_APTIDAO', '70'))
+# Plano de ação (RF10): quantas recomendações do catálogo ficam salvas em cada avaliação
+
+TOTAL_RECOMENDACOES = int(os.getenv('TOTAL_RECOMENDACOES', '10'))
+# Limite de recomendações enviadas à IA para ranquear, para o prompt não crescer sem controle
+IA_MAX_CANDIDATAS = int(os.getenv('IA_MAX_CANDIDATAS', '30'))
+
+
+# Relatório em PDF (WeasyPrint): tempo máximo de geração e tentativas em caso de falha
+
+PDF_TIMEOUT = float(os.getenv('PDF_TIMEOUT', '5'))
+PDF_TENTATIVAS = int(os.getenv('PDF_TENTATIVAS', '2'))

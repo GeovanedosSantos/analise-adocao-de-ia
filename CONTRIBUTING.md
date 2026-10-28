@@ -46,7 +46,7 @@ instale as dependencias:
 pip install -r requirements.txt
 ```
 
-Com o Docker rodando (Postgres e Redis), aplique as migrations e crie os dados de exemplo (empresa, usuário `demo` e um questionário publicado):
+Com o Docker rodando (Postgres e Redis), aplique as migrations e crie os dados de exemplo (empresa, usuário `demo`, o modelo de prontidão com 5 dimensões, 19 fatores e 38 itens, e o catálogo inicial de recomendações):
 
 ``` bash
 python manage.py migrate
@@ -59,13 +59,19 @@ e rode a API:
 python manage.py runserver
 ```
 
-Em outro terminal, rode o worker do Celery, que processa as respostas abertas com a IA:
+O modelo de prontidão sozinho pode ser carregado com `python manage.py carregar_modelo_prontidao` (ele só publica a versão se nenhuma estiver ativa). O catálogo de recomendações é mantido pelo Django admin (`/admin/`).
+
+Em outro terminal, rode o worker do Celery, que analisa as respostas abertas e ranqueia o plano de ação com a IA:
 
 ``` bash
 celery -A config worker --pool=solo -l info   # --pool=solo é necessário no Windows
 ```
 
-A análise usa um [Ollama](https://ollama.com/) local (`OLLAMA_URL`, padrão `http://localhost:11434`) com o modelo de `OLLAMA_MODEL`. Sem o Ollama, a avaliação é calculada normalmente e só a análise das respostas abertas termina em "Erro de Processamento".
+A análise usa um [Ollama](https://ollama.com/) local (`OLLAMA_URL`, padrão `http://localhost:11434`) com o modelo de `OLLAMA_MODEL`. Sem o Ollama, as notas e o plano de ação pelas faixas de pontuação ficam prontos na hora, e a avaliação termina em "Erro de Processamento".
+
+O relatório em PDF usa o WeasyPrint, que precisa do Pango instalado no sistema (`apt-get install libpango-1.0-0 libpangoft2-1.0-0` no Debian/Ubuntu; no Windows, veja a [documentação do WeasyPrint](https://doc.courtbouillon.org/weasyprint/stable/first_steps.html)).
+
+O contrato da API fica em `/api/v1/schema/` (OpenAPI) e `/api/v1/schema/docs/` (Swagger).
 
 ### Testes
 
@@ -73,6 +79,14 @@ A análise usa um [Ollama](https://ollama.com/) local (`OLLAMA_URL`, padrão `ht
 cd backend && python manage.py test apps   # precisa do Postgres rodando
 cd frontend && npm test
 ```
+
+Desempenho das rotas síncronas (RNF05, p95 < 500 ms) e do PDF (RNF09, < 5 s), com os dados do usuário `demo`:
+
+``` bash
+python manage.py medir_desempenho            # --sem-pdf se o Pango não estiver instalado
+```
+
+O teste de carga com workers e IA fica em [carga/locustfile.py](carga/locustfile.py). O CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) roda testes, lint, build, medição de desempenho e auditoria de dependências.
 
 ### Segurança do banco (RLS)
 
