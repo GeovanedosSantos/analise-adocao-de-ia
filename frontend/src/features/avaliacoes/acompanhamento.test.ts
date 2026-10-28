@@ -2,11 +2,19 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { acompanharProcessamento } from './acompanhamento'
 
 describe('acompanhamento do processamento', () => {
-  let eventos: { aoTerminar: ReturnType<typeof vi.fn>; aoEsgotar: ReturnType<typeof vi.fn>; aoFalhar: ReturnType<typeof vi.fn> }
+  let eventos: {
+    aoTerminar: ReturnType<typeof vi.fn<(resultado: unknown) => void>>
+    aoEsgotar: ReturnType<typeof vi.fn<() => void>>
+    aoFalhar: ReturnType<typeof vi.fn<(erro: unknown) => void>>
+  }
 
   beforeEach(() => {
     vi.useFakeTimers()
-    eventos = { aoTerminar: vi.fn(), aoEsgotar: vi.fn(), aoFalhar: vi.fn() }
+    eventos = {
+      aoTerminar: vi.fn<(resultado: unknown) => void>(),
+      aoEsgotar: vi.fn<() => void>(),
+      aoFalhar: vi.fn<(erro: unknown) => void>(),
+    }
   })
 
   afterEach(() => {
