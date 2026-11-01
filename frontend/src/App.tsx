@@ -4,7 +4,10 @@ import { sair } from '@/features/auth/authApi'
 import { lerToken } from './api/cliente'
 import { BarraLateral } from '@/components/BarraLateral'
 import { Carregando } from '@/components/Pagina'
+import { PaginaInicial } from '@/features/apresentacao/PaginaInicial'
+import { Cadastro } from '@/features/auth/Cadastro'
 import { Login } from '@/features/auth/Login'
+import { RetornoGoogle } from '@/features/auth/RetornoGoogle'
 import { PaginaEsqueciSenha, PaginaRedefinirSenha } from '@/features/auth/RecuperarSenha'
 import { PaginaQuestionario } from '@/features/avaliacoes/PaginaQuestionario'
 import { PaginaCatalogo } from '@/features/catalogo/PaginaCatalogo'
@@ -17,6 +20,7 @@ const PaginaUltimoResultado = lazy(() =>
   import('@/features/avaliacoes/PaginaResultado').then((m) => ({ default: m.PaginaUltimoResultado })),
 )
 
+// Primeira página da área logada (a apresentação pública fica em "/")
 const PAGINA_INICIAL = '/dashboard'
 
 /** Página que a pessoa tentou abrir antes de ir para o login. */
@@ -30,9 +34,14 @@ function App() {
     setLogado(false)
   }, [])
 
+  const entrou = useCallback(() => setLogado(true), [])
+
   return (
     <Routes>
-      <Route path="/login" element={<RotaLogin logado={logado} aoEntrar={() => setLogado(true)} />} />
+      <Route path="/" element={<PaginaInicial logado={logado} destino={PAGINA_INICIAL} />} />
+      <Route path="/login" element={<RotaLogin logado={logado} aoEntrar={entrou} />} />
+      <Route path="/cadastro" element={logado ? <Navigate to={PAGINA_INICIAL} replace /> : <Cadastro aoEntrar={entrou} />} />
+      <Route path="/entrar/google/retorno" element={<RetornoGoogle aoEntrar={entrou} destino={PAGINA_INICIAL} />} />
       <Route path="/recuperar-senha" element={<PaginaEsqueciSenha />} />
       <Route path="/redefinir-senha" element={<PaginaRedefinirSenha />} />
       <Route element={logado ? <LayoutLogado aoSair={encerrarSessao} /> : <IrParaLogin />}>

@@ -42,6 +42,8 @@ ALLOWED_HOSTS = [h for h in os.getenv('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0
 # Application definition
 
 INSTALLED_APPS = [
+    # Antes do admin: os templates do painel sobrescrevem os do Django
+    'apps.painel',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -173,6 +175,7 @@ REST_FRAMEWORK = {
         'user': os.getenv('LIMITE_USUARIO', '600/min'),
         'login': os.getenv('LIMITE_LOGIN', '10/min'),
         'senha': os.getenv('LIMITE_SENHA', '5/min'),
+        'cadastro': os.getenv('LIMITE_CADASTRO', '5/min'),
     },
 }
 
@@ -200,6 +203,12 @@ EMAIL_USE_TLS = env_bool('EMAIL_USE_TLS', True)
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'nao-responda@localhost')
 # Endereço do front-end, usado no link de redefinição de senha
 FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:5173')
+
+# Entrada com Google (OpenID Connect, fluxo de autorização com PKCE). Sem ID e segredo, o botão some.
+# O segredo fica só no servidor; o front-end recebe apenas o client_id e o endereço de retorno.
+GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID', '')
+GOOGLE_CLIENT_SECRET = os.getenv('GOOGLE_CLIENT_SECRET', '')
+GOOGLE_REDIRECT_URI = os.getenv('GOOGLE_REDIRECT_URI', f'{FRONTEND_URL}/entrar/google/retorno')
 
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=30),

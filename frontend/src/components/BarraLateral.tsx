@@ -120,7 +120,7 @@ export function BarraLateral({ aoSair }: { aoSair: () => void }) {
 
 function Marca() {
   return (
-    <Link to="/" aria-label="Adoção de IA, ir para o início" className="min-w-0 rounded-md focus-visible:outline-2 focus-visible:outline-destaque">
+    <Link to="/dashboard" aria-label="Adoção de IA, ir para o dashboard" className="min-w-0 rounded-md focus-visible:outline-2 focus-visible:outline-destaque">
       <Logo />
     </Link>
   )

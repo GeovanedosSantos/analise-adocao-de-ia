@@ -20,17 +20,24 @@ export function SimboloLogo({ className = 'size-8' }: { className?: string }) {
   )
 }
 
-/** Símbolo + nome: "Adoção de" e "IA" em degradê. */
+/** Nome do produto: "Adoção de" e "IA" em degradê. */
+export function NomeProduto({ className = '' }: { className?: string }) {
+  return (
+    <span className={`text-base font-semibold tracking-tight whitespace-nowrap text-titulo ${className}`}>
+      Adoção de{' '}
+      <span className="bg-linear-to-r from-[#4169e1] to-[#7c5ce6] bg-clip-text font-extrabold text-transparent dark:from-[#7ca3f5] dark:to-[#a78bfa]">
+        IA
+      </span>
+    </span>
+  )
+}
+
+/** Símbolo + nome. */
 export function Logo() {
   return (
     <span className="flex items-center gap-2.5">
       <SimboloLogo />
-      <span className="text-base font-semibold tracking-tight whitespace-nowrap text-titulo">
-        Adoção de{' '}
-        <span className="bg-linear-to-r from-[#4169e1] to-[#7c5ce6] bg-clip-text font-extrabold text-transparent dark:from-[#7ca3f5] dark:to-[#a78bfa]">
-          IA
-        </span>
-      </span>
+      <NomeProduto />
     </span>
   )
 }

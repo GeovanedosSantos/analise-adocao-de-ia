@@ -73,6 +73,50 @@ O relatório em PDF usa o WeasyPrint, que precisa do Pango instalado no sistema 
 
 O contrato da API fica em `/api/v1/schema/` (OpenAPI) e `/api/v1/schema/docs/` (Swagger).
 
+### Rotas públicas e contas
+
+| Rota (front-end) | O que é |
+| --- | --- |
+| `/` | Apresentação do produto, com "Entrar" e "Criar conta" no topo. Quem já entrou vê "Ir para o painel". |
+| `/login` | Entrada com usuário **ou** e-mail e senha, ou com Google. |
+| `/cadastro` | Cria uma empresa e o primeiro usuário dela, e já inicia a sessão. |
+| `/entrar/google/retorno` | Volta do Google: entra, pede os dados da empresa (conta nova) ou explica o erro. |
+
+Contas criadas pelo cadastro ou pelo Google **nunca** têm acesso ao painel administrativo (`is_staff` e `is_superuser` ficam falsos). Quem administra o sistema continua sendo criado com `createsuperuser` ou pelo próprio painel.
+
+API usada por essas telas: `POST /api/v1/auth/cadastro/`, `GET /api/v1/auth/google/config/`, `POST /api/v1/auth/google/` e `POST /api/v1/auth/google/concluir/`.
+
+### Entrar com Google
+
+O fluxo é o de autorização com PKCE (OpenID Connect): o front-end leva a pessoa ao Google, o Google devolve um código em `/entrar/google/retorno`, e o Django troca esse código usando o segredo do cliente, que nunca sai do servidor.
+
+1. No [Google Cloud Console](https://console.cloud.google.com/), em **APIs e serviços → Tela de permissão OAuth**, configure o app (tipo externo) com os escopos `openid`, `email` e `profile`.
+2. Em **Credenciais → Criar credenciais → ID do cliente OAuth**, escolha **Aplicativo da Web**.
+3. Em **URIs de redirecionamento autorizados**, cadastre exatamente o endereço do retorno de cada ambiente:
+   - desenvolvimento: `http://localhost:5173/entrar/google/retorno`
+   - produção: `https://<seu-dominio>/entrar/google/retorno`
+4. Em **Origens JavaScript autorizadas**, cadastre a origem do front-end (`http://localhost:5173`, `https://<seu-dominio>`).
+5. Preencha no `.env` do servidor:
+   ```
+   GOOGLE_CLIENT_ID=<id do cliente>
+   GOOGLE_CLIENT_SECRET=<segredo do cliente>
+   # Opcional: o padrão é FRONTEND_URL + /entrar/google/retorno
+   GOOGLE_REDIRECT_URI=https://<seu-dominio>/entrar/google/retorno
+   ```
+   O `GOOGLE_REDIRECT_URI` precisa ser idêntico ao cadastrado no Google, e o `FRONTEND_URL` deve apontar para o endereço público do site.
+6. Reinicie a API. O botão "Continuar com o Google" passa a funcionar no login e no cadastro.
+
+Enquanto a tela de permissão estiver em modo de **teste**, só os e-mails adicionados como usuários de teste conseguem entrar.
+
+Regras de vínculo:
+- A conta Google fica ligada ao usuário pelo identificador do Google (`sub`), não pelo e-mail.
+- Se o e-mail do Google já pertence a uma conta criada com senha, a entrada é recusada com uma orientação para entrar com e-mail e senha. Não há vínculo automático, porque o cadastro não confirma o e-mail e alguém poderia criar uma conta com o e-mail de outra pessoa.
+- Só são aceitos e-mails confirmados pelo Google.
+
+### Painel administrativo
+
+O `/admin/` continua sendo o Django admin, com as mesmas funções, permissões e rotas. A aparência vem da app `apps/painel` (templates e `static/painel/painel.css`), que fica antes de `django.contrib.admin` em `INSTALLED_APPS` e reaproveita a paleta do front-end, inclusive no tema escuro. Em produção, rode `collectstatic` (ou o mecanismo que já serve o CSS do admin) para publicar o `painel.css`.
+
 ### Testes
 
 ``` bash
