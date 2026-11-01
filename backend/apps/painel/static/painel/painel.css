@@ -336,13 +336,20 @@ html[data-theme="dark"] .painel-ia {
 .theme-toggle:hover {
     background: var(--p-muted);
 }
-.theme-toggle svg.theme-icon-when-auto,
-.theme-toggle svg.theme-icon-when-dark,
-.theme-toggle svg.theme-icon-when-light {
-    fill: var(--p-text);
-    color: var(--p-surface);
+/* Ícones de traço (templates/admin/color_theme_toggle.html), sem o quadrado de fundo dos ícones do Django */
+.theme-toggle svg.painel-icone-tema {
+    fill: none;
+    stroke: var(--p-text);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
     width: 1.125rem;
     height: 1.125rem;
+    vertical-align: middle;
+}
+.theme-toggle:hover svg.painel-icone-tema,
+.theme-toggle:focus-visible svg.painel-icone-tema {
+    stroke: var(--p-text-h);
 }
 
 /* Trilha de navegação --------------------------------------------------------------------- */
