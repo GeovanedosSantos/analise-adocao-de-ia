@@ -325,31 +325,45 @@ html[data-theme="dark"] .painel-ia {
     text-decoration: none;
 }
 
-.theme-toggle {
+.painel-tema {
+    cursor: pointer;
+    border: 0;
+    padding: 0;
+    background: transparent;
+    color: var(--p-text);
     border-radius: 8px;
     width: 36px;
     height: 36px;
     display: inline-grid;
     place-items: center;
     margin: 0 0 0 4px;
+    transition: background-color 150ms, transform 150ms;
 }
-.theme-toggle:hover {
+.painel-tema:hover,
+.painel-tema:focus-visible {
     background: var(--p-muted);
+    color: var(--p-text-h);
 }
-/* Ícones de traço (templates/admin/color_theme_toggle.html), sem o quadrado de fundo dos ícones do Django */
-.theme-toggle svg.painel-icone-tema {
+.painel-tema:active {
+    transform: scale(0.94);
+}
+/* Ícones de traço iguais aos do site */
+.painel-tema svg.painel-icone-tema {
     fill: none;
-    stroke: var(--p-text);
+    stroke: currentColor;
     stroke-width: 2;
     stroke-linecap: round;
     stroke-linejoin: round;
     width: 1.125rem;
     height: 1.125rem;
-    vertical-align: middle;
 }
-.theme-toggle:hover svg.painel-icone-tema,
-.theme-toggle:focus-visible svg.painel-icone-tema {
-    stroke: var(--p-text-h);
+/* O ícone mostra o tema que o clique aplica: lua no claro, sol no escuro (como no site) */
+.painel-tema .painel-icone-sol,
+.painel-tema[data-escuro="true"] .painel-icone-lua {
+    display: none;
+}
+.painel-tema[data-escuro="true"] .painel-icone-sol {
+    display: block;
 }
 
 /* Trilha de navegação --------------------------------------------------------------------- */
@@ -1044,7 +1058,7 @@ body.login {
     align-items: flex-start;
     gap: 10px;
 }
-.login .theme-toggle {
+.login .painel-tema {
     position: absolute;
     top: 18px;
     right: 18px;
