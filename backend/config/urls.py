@@ -5,7 +5,15 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from rest_framework_simplejwt.views import TokenRefreshView
 
 from apps.avaliacoes.views import AvaliacaoViewSet
-from apps.contas.views import EntrarView, EsqueciSenhaView, RedefinirSenhaView
+from apps.contas.views import (
+    CadastroView,
+    EntrarView,
+    EsqueciSenhaView,
+    GoogleConcluirView,
+    GoogleConfigView,
+    GoogleEntrarView,
+    RedefinirSenhaView,
+)
 from apps.questionarios.views import QuestionarioAtivoView, QuestionarioView
 from apps.recomendacoes.views import CatalogoView
 
@@ -15,6 +23,10 @@ router.register('avaliacoes', AvaliacaoViewSet, basename='avaliacao')
 api_v1 = [
     path('auth/token/', EntrarView.as_view(), name='token'),
     path('auth/token/refresh/', TokenRefreshView.as_view(), name='token-refresh'),
+    path('auth/cadastro/', CadastroView.as_view(), name='cadastro'),
+    path('auth/google/config/', GoogleConfigView.as_view(), name='google-config'),
+    path('auth/google/', GoogleEntrarView.as_view(), name='google-entrar'),
+    path('auth/google/concluir/', GoogleConcluirView.as_view(), name='google-concluir'),
     path('auth/senha/esqueci/', EsqueciSenhaView.as_view(), name='senha-esqueci'),
     path('auth/senha/redefinir/', RedefinirSenhaView.as_view(), name='senha-redefinir'),
     # Contrato da API em OpenAPI (seção 5.3)

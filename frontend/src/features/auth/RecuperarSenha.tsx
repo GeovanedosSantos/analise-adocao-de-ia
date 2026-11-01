@@ -2,13 +2,10 @@ import { useState, type ReactNode, type SubmitEvent } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { ErroApi } from '@/api/cliente'
 import { Alerta } from '@/components/Alerta'
-import { AlternarTema } from '@/components/AlternarTema'
 import { Botao, BotaoLink } from '@/components/Botao'
-import { Logo } from '@/components/Logo'
+import { CLASSE_CAMPO as CAMPO } from '@/components/Campo'
 import { pedirRedefinicao, redefinirSenha } from './authApi'
-
-const CAMPO =
-  'h-11 w-full rounded-lg border border-borda bg-superficie px-3 text-base text-titulo placeholder:text-texto/60 shadow-xs outline-none transition-colors duration-150 focus:border-destaque focus:ring-3 focus:ring-destaque/20 sm:text-sm'
+import { MolduraAuth } from './MolduraAuth'
 
 /** "Esqueci a minha senha" (UC01 FA01): pede o e-mail e envia o link de redefinição. */
 export function PaginaEsqueciSenha() {
@@ -130,20 +127,15 @@ export function PaginaRedefinirSenha() {
 
 function Moldura({ titulo, children }: { titulo: string; children: ReactNode }) {
   return (
-    <main className="flex flex-1 flex-col bg-fundo">
-      <header className="flex items-center justify-between px-6 py-5 sm:px-10">
-        <Logo />
-        <AlternarTema />
-      </header>
-      <div className="flex flex-1 items-center justify-center px-6 pb-16">
-        <div className="flex w-full max-w-sm flex-col gap-4 rounded-2xl border border-borda bg-superficie p-6 shadow-xl shadow-slate-900/5 dark:shadow-black/40">
-          <h1 className="text-xl">{titulo}</h1>
-          {children}
-          <Link to="/login" className="text-sm text-destaque underline-offset-4 hover:underline">
-            Voltar para o login
-          </Link>
-        </div>
-      </div>
-    </main>
+    <MolduraAuth
+      titulo={titulo}
+      rodape={
+        <Link to="/login" className="text-destaque underline-offset-4 hover:underline">
+          Voltar para o login
+        </Link>
+      }
+    >
+      {children}
+    </MolduraAuth>
   )
 }

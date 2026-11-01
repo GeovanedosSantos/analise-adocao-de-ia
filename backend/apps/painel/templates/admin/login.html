@@ -1,0 +1,8 @@
+{% extends "admin/login.html" %}
+{% block pretitle %}
+<h1 class="painel-login-titulo">Entrar no painel</h1>
+<p class="painel-login-texto">Acesso restrito à equipe administrativa. Empresas entram pelo site.</p>
+{% endblock %}
+{% block footer %}
+<p class="painel-login-voltar"><a href="{{ site_url }}">Voltar para o site</a></p>
+{% endblock %}

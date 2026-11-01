@@ -1,0 +1,43 @@
+{% extends "admin/base.html" %}
+{% load static %}
+{% comment %}
+  Identidade visual do produto no painel. O CSS do painel entra por último (bloco responsive),
+  depois do CSS do Django e do CSS específico de cada página (login, dashboard, formulários).
+{% endcomment %}
+
+{% block title %}{% if subtitle %}{{ subtitle }} | {% endif %}{{ title }} | {{ site_title }}{% endblock %}
+
+{% block extrahead %}{{ block.super }}
+<link rel="icon" type="image/svg+xml" href="{% static 'painel/favicon.svg' %}">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1e293b" media="(prefers-color-scheme: dark)">
+{% endblock %}
+
+{% block responsive %}{{ block.super }}
+<link rel="stylesheet" href="{% static 'painel/painel.css' %}">
+{% endblock %}
+
+{% block branding %}
+<div id="site-name">
+  <a class="painel-marca" href="{% url 'admin:index' %}">
+    <svg class="painel-simbolo" viewBox="0 0 32 32" aria-hidden="true">
+      <defs>
+        <linearGradient id="painel-gradiente" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#4f7bf0"/><stop offset="1" stop-color="#6d4fe0"/>
+        </linearGradient>
+      </defs>
+      <rect width="32" height="32" rx="9" fill="url(#painel-gradiente)"/>
+      <path d="M9.5 24 L16 8 L22.5 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="16" cy="18.5" r="2.6" fill="#fff"/>
+      <path d="M12.4 18.5h-1.2M20.8 18.5h-1.2" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+    <span class="painel-nome">Adoção de <span class="painel-ia">IA</span></span>
+  </a>
+  <span class="painel-selo">Painel administrativo</span>
+</div>
+{% if user.is_anonymous %}
+  {% include "admin/color_theme_toggle.html" %}
+{% endif %}
+{% endblock %}
+
+{% block nav-global %}{% endblock %}

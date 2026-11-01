@@ -25,6 +25,25 @@ class Usuario(AbstractUser):
     empresa = models.ForeignKey(Empresa, on_delete=models.PROTECT, null=True, blank=True, related_name='usuarios')
 
 
+class ContaGoogle(models.Model):
+    """Vínculo entre um usuário e a conta Google usada para entrar (OpenID Connect).
+
+    O vínculo é pelo `sub` (identificador estável do Google), nunca só pelo e-mail.
+    """
+
+    usuario = models.OneToOneField(Usuario, on_delete=models.CASCADE, related_name='conta_google')
+    sub = models.CharField('identificador no Google', max_length=255, unique=True)
+    email = models.EmailField('e-mail no Google')
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'conta Google'
+        verbose_name_plural = 'contas Google'
+
+    def __str__(self):
+        return self.email
+
+
 class AuditoriaAcesso(models.Model):
     """Tentativa bloqueada de acessar recurso de outra empresa (RNF04)."""
 
