@@ -26,6 +26,32 @@ def resposta_ollama(conteudo):
 
 @mock.patch('apps.avaliacoes.llm.requests.post')
 class ClienteLlmTests(TestCase):
+    def test_prompt_leva_o_contexto_da_empresa_e_limita_os_tokens(self, post):
+        post.return_value = resposta_ollama(json.dumps(ANALISE_VALIDA))
+        contexto = {
+            'setor': 'Varejo', 'dimensao': 'Dados', 'descricao_dimensao': 'Qualidade e governança.',
+            'fatores': ['Qualidade e confiabilidade', 'Governança'], 'nota': 37.456,
+            'menor_concordancia': [('Há governança de dados?', 1)], 'maior_concordancia': [('Os dados são catalogados?', 5)],
+        }
+
+        llm.analisar_resposta('Descreva seus dados.', 'Planilhas no Drive.', contexto)
+
+        corpo = post.call_args.kwargs['json']
+        for trecho in ['Setor da empresa: Varejo', 'Dimensão avaliada: Dados. Qualidade e governança.',
+                       'Qualidade e confiabilidade, Governança', '37.5 de 100', '"Há governança de dados?" (concordância 1 de 5)',
+                       '"Os dados são catalogados?" (concordância 5 de 5)', 'Planilhas no Drive.']:
+            self.assertIn(trecho, corpo['prompt'])
+        self.assertEqual(corpo['options']['num_predict'], llm.MAX_TOKENS_ANALISE)
+
+    def test_sem_contexto_o_prompt_diz_que_nao_foi_informado(self, post):
+        post.return_value = resposta_ollama(json.dumps(ANALISE_VALIDA))
+
+        llm.analisar_resposta('Pergunta?', 'Resposta.')
+
+        prompt = post.call_args.kwargs['json']['prompt']
+        self.assertIn('Setor da empresa: não informado', prompt)
+        self.assertIn('Nota da empresa nesta dimensão: não calculada', prompt)
+
     def test_retorna_analise_quando_o_json_segue_o_contrato(self, post):
         post.return_value = resposta_ollama(json.dumps(ANALISE_VALIDA))
 
@@ -115,6 +141,21 @@ class ProcessarRespostasAbertasTests(TestCase):
         self.assertEqual(self.avaliacao.status, StatusAvaliacao.ERRO_PROCESSAMENTO)
         self.assertEqual(analisar.call_count, 4)  # 1 tentativa + 3 retentativas
         self.assertIsNone(self.aberta.feedback_ia)
+
+    def test_analise_recebe_o_contexto_da_dimensao(self, analisar):
+        analisar.return_value = ANALISE_VALIDA
+        calcular_pontuacao(self.avaliacao)
+
+        self.executar()
+
+        pergunta, resposta, contexto = analisar.call_args.args
+        self.assertEqual((pergunta, resposta), ('Descreva seus dados.', 'Temos um data lake com dados de vendas.'))
+        self.assertEqual(contexto['setor'], 'Varejo')
+        self.assertEqual(contexto['dimensao'], 'Dados')
+        self.assertIsNotNone(contexto['nota'])
+        # Dados: "catalogados" = 5 e "governança" = 1; a dimensão Pessoas não entra
+        self.assertEqual(contexto['menor_concordancia'], [('Há governança de dados?', 1)])
+        self.assertEqual(contexto['maior_concordancia'], [('Os dados são catalogados?', 5)])
 
     def test_resposta_ja_analisada_nao_e_reenviada(self, analisar):
         self.aberta.feedback_ia = ANALISE_VALIDA
