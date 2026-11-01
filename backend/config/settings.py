@@ -260,7 +260,9 @@ CELERY_TASK_TIME_LIMIT = 10 * 60
 # Motor de IA local (RNF02): a inferência nunca sai da infraestrutura própria
 
 OLLAMA_URL = os.getenv('OLLAMA_URL', 'http://localhost:11434')
-OLLAMA_MODEL = os.getenv('OLLAMA_MODEL', 'llama3.1')
+# gemma3:4b: no teste em CPU (4 threads) fez a avaliação em cerca de metade do tempo do llama3.1
+# e com menos afirmações inventadas que os modelos de 3B comparados (qwen2.5:3b, llama3.2)
+OLLAMA_MODEL = os.getenv('OLLAMA_MODEL', 'gemma3:4b')
 OLLAMA_TIMEOUT = int(os.getenv('OLLAMA_TIMEOUT', '60'))
 # Janela de contexto em tokens: o prompt de ranking leva até IA_MAX_CANDIDATAS ações e as análises
 OLLAMA_NUM_CTX = int(os.getenv('OLLAMA_NUM_CTX', '8192'))
@@ -271,7 +273,8 @@ IA_MAX_TENTATIVAS = int(os.getenv('IA_MAX_TENTATIVAS', '3'))
 
 TOTAL_RECOMENDACOES = int(os.getenv('TOTAL_RECOMENDACOES', '10'))
 # Limite de recomendações enviadas à IA para ranquear, para o prompt não crescer sem controle
-IA_MAX_CANDIDATAS = int(os.getenv('IA_MAX_CANDIDATAS', '30'))
+# 12: duas a mais que o plano salvo. Em CPU, cada ação a mais no prompt alonga a espera.
+IA_MAX_CANDIDATAS = int(os.getenv('IA_MAX_CANDIDATAS', '12'))
 
 
 # Relatório em PDF (WeasyPrint): tempo máximo de geração e tentativas em caso de falha
