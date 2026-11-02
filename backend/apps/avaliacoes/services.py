@@ -74,6 +74,7 @@ def calcular_pontuacao(avaliacao):
     """Motor determinístico (RF05, RF06, RF07).
 
     - Nota da dimensão: média das objetivas ponderada pelo peso da pergunta, levada de 0 a 100.
+      Pergunta invertida (afirmação negativa) entra com a escala espelhada: 1 vale 5, 5 vale 1.
     - Nota geral: média das dimensões ponderada pelo peso da dimensão.
     - Dimensão prioritária: a de menor nota. Empate na nota: a de maior peso. Empate também no
       peso: todas as empatadas (US04).
@@ -82,7 +83,10 @@ def calcular_pontuacao(avaliacao):
     por_dimensao = defaultdict(list)
     for pergunta in _objetivas_ativas(avaliacao).select_related('dimensao'):
         if pergunta.id in valores:
-            por_dimensao[pergunta.dimensao].append((pergunta.peso, valores[pergunta.id]))
+            valor = valores[pergunta.id]
+            if pergunta.invertida:
+                valor = ESCALA_MIN + ESCALA_MAX - valor
+            por_dimensao[pergunta.dimensao].append((pergunta.peso, valor))
 
     pontuacoes = [
         PontuacaoDimensao(avaliacao=avaliacao, dimensao=dimensao, nota=_nota_normalizada(itens))

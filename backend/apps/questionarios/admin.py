@@ -50,6 +50,6 @@ class DimensaoAdmin(admin.ModelAdmin):
 
 @admin.register(Pergunta)
 class PerguntaAdmin(admin.ModelAdmin):
-    list_display = ['texto', 'dimensao', 'fator', 'tipo', 'peso', 'ativa']
-    list_filter = ['dimensao__questionario', 'tipo', 'ativa']
+    list_display = ['texto', 'dimensao', 'fator', 'tipo', 'peso', 'invertida', 'ativa']
+    list_filter = ['dimensao__questionario', 'tipo', 'invertida', 'ativa']
     list_editable = ['ativa']
