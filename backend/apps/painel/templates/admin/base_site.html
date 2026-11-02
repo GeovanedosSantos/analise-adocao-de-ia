@@ -1,5 +1,5 @@
 {% extends "admin/base.html" %}
-{% load static %}
+{% load static painel %}
 {% comment %}
   Identidade visual do produto no painel. O CSS do painel entra por último (bloco responsive),
   depois do CSS do Django e do CSS específico de cada página (login, dashboard, formulários).
@@ -14,7 +14,7 @@
 {% endblock %}
 
 {% block responsive %}{{ block.super }}
-<link rel="stylesheet" href="{% static 'painel/painel.css' %}">
+<link rel="stylesheet" href="{% static_versionado 'painel/painel.css' %}">
 {% endblock %}
 
 {% block branding %}

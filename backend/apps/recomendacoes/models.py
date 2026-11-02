@@ -30,17 +30,24 @@ class Recomendacao(models.Model):
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    codigo = models.SlugField(max_length=50, unique=True, help_text='Identificador estável (ex.: "dados-governanca").')
+    codigo = models.SlugField(
+        'código', max_length=50, unique=True, help_text='Identificador estável (ex.: "dados-governanca").',
+    )
     dimensao_codigo = models.SlugField(
+        'código da dimensão',
         max_length=50, help_text='Código da dimensão do questionário (ex.: "dados"). É estável entre versões.',
     )
-    titulo = models.CharField(max_length=200)
-    descricao = models.TextField(help_text='A ação recomendada, como será exibida para a empresa.')
-    nota_minima = models.FloatField(validators=[MinValueValidator(NOTA_MIN), MaxValueValidator(NOTA_MAX)])
-    nota_maxima = models.FloatField(validators=[MinValueValidator(NOTA_MIN), MaxValueValidator(NOTA_MAX)])
+    titulo = models.CharField('título', max_length=200)
+    descricao = models.TextField('descrição', help_text='A ação recomendada, como será exibida para a empresa.')
+    nota_minima = models.FloatField(
+        'nota mínima', validators=[MinValueValidator(NOTA_MIN), MaxValueValidator(NOTA_MAX)],
+    )
+    nota_maxima = models.FloatField(
+        'nota máxima', validators=[MinValueValidator(NOTA_MIN), MaxValueValidator(NOTA_MAX)],
+    )
     prazo = models.CharField(max_length=10, choices=Prazo.choices)
     prioridade = models.CharField(max_length=10, choices=Nivel.choices)
-    esforco = models.CharField(max_length=10, choices=Nivel.choices)
+    esforco = models.CharField('esforço', max_length=10, choices=Nivel.choices)
     impacto = models.CharField(max_length=10, choices=Nivel.choices)
     kpi = models.CharField('KPI', max_length=255, blank=True, help_text='Métrica que indica o sucesso da ação.')
     ativa = models.BooleanField(default=True, help_text='Inativas deixam de ser sugeridas em novas avaliações.')

@@ -9,9 +9,9 @@ class Questionario(models.Model):
     """Uma versão do questionário. Só uma versão fica ativa para novas avaliações (US01)."""
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    versao = models.CharField(max_length=20, unique=True)
-    descricao = models.TextField(blank=True)
-    data_criacao = models.DateField(auto_now_add=True)
+    versao = models.CharField('versão', max_length=20, unique=True)
+    descricao = models.TextField('descrição', blank=True)
+    data_criacao = models.DateField('data de criação', auto_now_add=True)
     ativo = models.BooleanField(default=False)
 
     class Meta:
@@ -90,9 +90,11 @@ class EstruturaVersionada(models.Model):
 
 class Dimensao(EstruturaVersionada):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    questionario = models.ForeignKey(Questionario, on_delete=models.CASCADE, related_name='dimensoes')
+    questionario = models.ForeignKey(
+        Questionario, on_delete=models.CASCADE, related_name='dimensoes', verbose_name='questionário',
+    )
     codigo = models.SlugField(
-        max_length=50, blank=True,
+        'código', max_length=50, blank=True,
         help_text='Identificador estável entre versões (ex.: "dados"). Liga avaliações de versões diferentes '
                   'e o catálogo de recomendações. Se ficar em branco, é gerado a partir do nome.',
     )
@@ -138,8 +140,10 @@ class Fator(EstruturaVersionada):
     """Fator de prontidão (Quadro 11): agrupa as perguntas de uma dimensão. A nota continua sendo por dimensão."""
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    dimensao = models.ForeignKey(Dimensao, on_delete=models.CASCADE, related_name='fatores')
-    codigo = models.SlugField(max_length=50, blank=True, help_text='Se ficar em branco, é gerado a partir do nome.')
+    dimensao = models.ForeignKey(Dimensao, on_delete=models.CASCADE, related_name='fatores', verbose_name='dimensão')
+    codigo = models.SlugField(
+        'código', max_length=50, blank=True, help_text='Se ficar em branco, é gerado a partir do nome.',
+    )
     nome = models.CharField(max_length=255)
     descricao = models.TextField('descrição', blank=True)
     ordem = models.PositiveSmallIntegerField(default=0)
@@ -170,7 +174,7 @@ class TipoPergunta(models.TextChoices):
 
 class Pergunta(EstruturaVersionada):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    dimensao = models.ForeignKey(Dimensao, on_delete=models.CASCADE, related_name='perguntas')
+    dimensao = models.ForeignKey(Dimensao, on_delete=models.CASCADE, related_name='perguntas', verbose_name='dimensão')
     fator = models.ForeignKey(
         Fator, on_delete=models.PROTECT, null=True, blank=True, related_name='perguntas',
         help_text='Fator da mesma dimensão ao qual a pergunta pertence.',

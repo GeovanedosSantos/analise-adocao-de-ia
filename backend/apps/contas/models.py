@@ -10,7 +10,7 @@ class Empresa(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     nome = models.CharField(max_length=255)
     setor = models.CharField(max_length=100)
-    data_cadastro = models.DateField(auto_now_add=True)
+    data_cadastro = models.DateField('data de cadastro', auto_now_add=True)
 
     class Meta:
         ordering = ['nome']
@@ -31,7 +31,9 @@ class ContaGoogle(models.Model):
     O vínculo é pelo `sub` (identificador estável do Google), nunca só pelo e-mail.
     """
 
-    usuario = models.OneToOneField(Usuario, on_delete=models.CASCADE, related_name='conta_google')
+    usuario = models.OneToOneField(
+        Usuario, on_delete=models.CASCADE, related_name='conta_google', verbose_name='usuário',
+    )
     sub = models.CharField('identificador no Google', max_length=255, unique=True)
     email = models.EmailField('e-mail no Google')
     criado_em = models.DateTimeField(auto_now_add=True)
@@ -48,14 +50,16 @@ class AuditoriaAcesso(models.Model):
     """Tentativa bloqueada de acessar recurso de outra empresa (RNF04)."""
 
     criado_em = models.DateTimeField(auto_now_add=True)
-    usuario = models.ForeignKey(Usuario, on_delete=models.SET_NULL, null=True, related_name='+')
-    empresa_usuario_id = models.UUIDField(null=True)
+    usuario = models.ForeignKey(
+        Usuario, on_delete=models.SET_NULL, null=True, related_name='+', verbose_name='usuário',
+    )
+    empresa_usuario_id = models.UUIDField('empresa do usuário', null=True)
     recurso = models.CharField(max_length=100)
-    recurso_id = models.CharField(max_length=64)
-    empresa_recurso_id = models.UUIDField(null=True)
-    metodo = models.CharField(max_length=10)
+    recurso_id = models.CharField('ID do recurso', max_length=64)
+    empresa_recurso_id = models.UUIDField('empresa do recurso', null=True)
+    metodo = models.CharField('método', max_length=10)
     caminho = models.CharField(max_length=500)
-    ip = models.GenericIPAddressField(null=True)
+    ip = models.GenericIPAddressField('IP', null=True)
 
     class Meta:
         ordering = ['-criado_em']

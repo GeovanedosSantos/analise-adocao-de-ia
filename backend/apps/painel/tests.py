@@ -14,6 +14,11 @@ class PainelTests(TestCase):
         self.assertContains(resposta, 'painel/painel.css')
         self.assertContains(resposta, 'Entrar no painel')
 
+    def test_css_do_painel_tem_versao_pelo_conteudo_para_furar_o_cache(self):
+        resposta = self.client.get('/admin/login/')
+
+        self.assertRegex(resposta.content.decode(), r'painel/painel\.css\?v=[0-9a-f]{10}"')
+
     def test_indice_abre_para_superusuario_com_todos_os_modelos(self):
         admin = Usuario.objects.create_superuser('raiz', 'raiz@exemplo.com', SENHA)
         self.client.force_login(admin)
