@@ -59,7 +59,7 @@ e rode a API:
 python manage.py runserver
 ```
 
-O modelo de prontidão sozinho pode ser carregado com `python manage.py carregar_modelo_prontidao` (ele só publica a versão se nenhuma estiver ativa). O catálogo de recomendações é mantido pelo Django admin (`/admin/`).
+O modelo de prontidão sozinho pode ser carregado com `python manage.py carregar_modelo_prontidao` (ele só publica a versão se nenhuma estiver ativa). Depois de mudar os itens em `modelo_prontidao.py`, troque `VERSAO` e rode `python manage.py carregar_modelo_prontidao --publicar`: a versão nova é criada e publicada, e a anterior fica arquivada com o histórico das avaliações intacto. Itens marcados com `Invertida(...)` são afirmações negativas e entram no cálculo com a escala espelhada. O catálogo de recomendações é mantido pelo Django admin (`/admin/`).
 
 Em outro terminal, rode o worker do Celery, que analisa as respostas abertas e ranqueia o plano de ação com a IA:
 

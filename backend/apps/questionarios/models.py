@@ -55,7 +55,7 @@ class Questionario(models.Model):
             Pergunta.objects.bulk_create(
                 Pergunta(
                     dimensao=nova_dimensao, fator=novos_fatores.get(p.fator_id), texto=p.texto, tipo=p.tipo,
-                    peso=p.peso, ordem=p.ordem, ativa=p.ativa,
+                    peso=p.peso, invertida=p.invertida, ordem=p.ordem, ativa=p.ativa,
                 )
                 for p in dimensao.perguntas.all()
             )
@@ -178,6 +178,11 @@ class Pergunta(EstruturaVersionada):
     texto = models.TextField()
     tipo = models.CharField(max_length=20, choices=TipoPergunta.choices)
     peso = models.FloatField(help_text='Peso da pergunta dentro da dimensão.')
+    invertida = models.BooleanField(
+        default=False,
+        help_text='Afirmação negativa: concordar indica menor prontidão. No cálculo, a resposta entra invertida '
+                  '(1 vira 5, 2 vira 4).',
+    )
     ordem = models.PositiveSmallIntegerField(default=0)
     ativa = models.BooleanField(default=True)
 
@@ -185,6 +190,9 @@ class Pergunta(EstruturaVersionada):
         ordering = ['ordem']
         constraints = [
             models.CheckConstraint(condition=models.Q(peso__gt=0), name='pergunta_peso_positivo'),
+            models.CheckConstraint(
+                condition=models.Q(invertida=False) | models.Q(tipo='OBJETIVA'), name='so_objetiva_invertida',
+            ),
         ]
 
     def __str__(self):
@@ -193,6 +201,8 @@ class Pergunta(EstruturaVersionada):
     def clean(self):
         if self.fator_id and self.dimensao_id and self.fator.dimensao_id != self.dimensao_id:
             raise ValidationError({'fator': 'O fator precisa ser da mesma dimensão da pergunta.'})
+        if self.invertida and self.tipo != TipoPergunta.OBJETIVA:
+            raise ValidationError({'invertida': 'Só perguntas objetivas podem ser invertidas.'})
 
     def save(self, *args, **kwargs):
         self.clean()

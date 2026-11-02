@@ -44,6 +44,18 @@ class MotorDePontuacaoTests(TestCase):
         calcular_pontuacao(self.avaliacao)
         self.assertEqual((self.avaliacao.nota_geral, self.avaliacao.nivel_prontidao), (0.0, 1))
 
+    def test_pergunta_invertida_entra_com_a_escala_espelhada(self):
+        # Dados/peso 3 vira afirmação negativa: discordar totalmente (1) vale como 5
+        Pergunta.objects.filter(dimensao__nome='Dados', peso=3).update(invertida=True)
+
+        responder_objetivas(self.avaliacao, [5, 1, 5])
+        calcular_pontuacao(self.avaliacao)
+        self.assertEqual(self.notas(), {'Dados': 100.0, 'Pessoas': 100.0})
+
+        responder_objetivas(self.avaliacao, [5, 4, 5])  # 4 vale 2: (1 * 100 + 3 * 25) / 4
+        calcular_pontuacao(self.avaliacao)
+        self.assertEqual(self.notas()['Dados'], 43.75)
+
     def test_nivel_de_prontidao(self):
         responder_objetivas(self.avaliacao, [5, 1, 5])  # nota geral 50
 

@@ -6,6 +6,7 @@ from django.test import TestCase
 from rest_framework.test import APITestCase
 
 from apps.contas.tests.fabricas import criar_empresa, criar_usuario
+from apps.questionarios.modelo_prontidao import VERSAO
 from apps.questionarios.models import Dimensao, Fator, Pergunta, Questionario, TipoPergunta
 from apps.recomendacoes.models import Recomendacao
 
@@ -43,6 +44,30 @@ class CarregarModeloTests(TestCase):
 
         self.assertEqual(Questionario.objects.count(), 1)
 
+    def test_marca_os_itens_invertidos_so_entre_as_objetivas(self):
+        self.carregar()
+
+        invertidas = Pergunta.objects.filter(invertida=True)
+        self.assertEqual(invertidas.count(), 7)
+        self.assertFalse(invertidas.exclude(tipo=TipoPergunta.OBJETIVA).exists())
+
+    def test_versao_nova_nao_substitui_a_ativa_sem_publicar(self):
+        antiga = criar_questionario(versao='1.0')
+
+        self.carregar()
+
+        self.assertEqual(Questionario.objects.get(ativo=True), antiga)
+
+    def test_publicar_troca_a_versao_ativa_e_arquiva_a_anterior(self):
+        antiga = criar_questionario(versao='1.0')
+
+        call_command('carregar_modelo_prontidao', '--publicar', stdout=StringIO())
+
+        antiga.refresh_from_db()
+        self.assertFalse(antiga.ativo)
+        self.assertEqual(Questionario.objects.get(ativo=True).versao, VERSAO)
+        self.assertEqual(antiga.dimensoes.count(), 2)
+
 
 class FatorTests(TestCase):
     def setUp(self):
@@ -64,6 +89,22 @@ class FatorTests(TestCase):
         copia = Fator.objects.get(dimensao__questionario=v2)
         self.assertNotEqual(copia.pk, fator.pk)
         self.assertEqual(copia.perguntas.count(), 2)
+
+    def test_nova_versao_copia_a_marcacao_de_invertida(self):
+        self.dados.perguntas.filter(peso=3).update(invertida=True)
+
+        v2 = self.questionario.nova_versao('2.0')
+
+        self.assertEqual(
+            list(Pergunta.objects.filter(dimensao__questionario=v2, invertida=True).values_list('texto', flat=True)),
+            ['Há governança de dados?'],
+        )
+
+    def test_pergunta_dissertativa_nao_pode_ser_invertida(self):
+        with self.assertRaises(ValidationError):
+            Pergunta.objects.create(
+                dimensao=self.dados, texto='Descreva.', tipo=TipoPergunta.DISSERTATIVA, peso=1, invertida=True,
+            )
 
 
 class InativarDimensaoTests(APITestCase):
