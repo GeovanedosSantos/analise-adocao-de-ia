@@ -920,6 +920,29 @@ fieldset details summary {
 .inline-group .tabular tr.has_original td {
     padding-top: 2.2em;
 }
+/* Rótulo do registro (ex.: "Tecnologia") no topo da linha, acima dos campos, e rolando junto com ela */
+.inline-group .tabular tr.has_original {
+    position: relative;
+}
+.inline-group .tabular tr.has_original td.original {
+    padding-top: 2px;
+}
+/* Tabelas dos inlines (dimensões, fatores, perguntas) podem ser mais largas que a tela:
+   rolam de lado em vez de serem cortadas pelo overflow: hidden do .module */
+.inline-group .tabular fieldset.module {
+    overflow-x: auto;
+}
+.inline-group .tabular textarea {
+    width: 22rem;
+    height: 4.5rem;
+    resize: vertical;
+}
+.inline-group .tabular input[type=text] {
+    width: 12rem;
+}
+.inline-group .tabular input[type=number] {
+    width: 5.5rem;
+}
 .inline-related h3 {
     background: var(--p-muted);
     color: var(--p-text);
