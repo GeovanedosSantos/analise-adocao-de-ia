@@ -22,16 +22,22 @@ class Avaliacao(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, related_name='avaliacoes')
-    questionario = models.ForeignKey(Questionario, on_delete=models.PROTECT, related_name='avaliacoes')
+    questionario = models.ForeignKey(
+        Questionario, on_delete=models.PROTECT, related_name='avaliacoes', verbose_name='questionário',
+    )
     status = models.CharField(max_length=20, choices=StatusAvaliacao.choices, default=StatusAvaliacao.RASCUNHO)
-    data_inicio = models.DateTimeField(auto_now_add=True)
-    data_fim = models.DateTimeField(null=True, blank=True)
+    data_inicio = models.DateTimeField('início', auto_now_add=True)
+    data_fim = models.DateTimeField('fim', null=True, blank=True)
     nota_geral = models.FloatField(null=True, blank=True)
-    nivel_prontidao = models.PositiveSmallIntegerField(null=True, blank=True, help_text='De 1 a 5.')
+    nivel_prontidao = models.PositiveSmallIntegerField(
+        'nível de prontidão', null=True, blank=True, help_text='De 1 a 5.',
+    )
     recomendacoes_ordenadas_ia = models.BooleanField(
+        'recomendações ordenadas pela IA',
         default=False, help_text='O plano de ação já foi ranqueado pela IA; senão, segue a ordem das faixas.',
     )
     versao_prompts_ia = models.CharField(
+        'versão dos prompts da IA',
         max_length=20, blank=True, help_text='Versão dos prompts da IA que ranqueou o plano de ação.',
     )
 
@@ -51,10 +57,12 @@ class Avaliacao(models.Model):
 
 class PontuacaoDimensao(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    avaliacao = models.ForeignKey(Avaliacao, on_delete=models.CASCADE, related_name='pontuacoes')
-    dimensao = models.ForeignKey(Dimensao, on_delete=models.PROTECT, related_name='+')
+    avaliacao = models.ForeignKey(
+        Avaliacao, on_delete=models.CASCADE, related_name='pontuacoes', verbose_name='avaliação',
+    )
+    dimensao = models.ForeignKey(Dimensao, on_delete=models.PROTECT, related_name='+', verbose_name='dimensão')
     nota = models.FloatField(help_text='De 0 a 100.')
-    prioritaria = models.BooleanField(default=False)
+    prioritaria = models.BooleanField('prioritária', default=False)
 
     class Meta:
         ordering = ['dimensao__ordem']
@@ -67,14 +75,16 @@ class PontuacaoDimensao(models.Model):
 
 class Resposta(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    avaliacao = models.ForeignKey(Avaliacao, on_delete=models.CASCADE, related_name='respostas')
+    avaliacao = models.ForeignKey(
+        Avaliacao, on_delete=models.CASCADE, related_name='respostas', verbose_name='avaliação',
+    )
     pergunta = models.ForeignKey(Pergunta, on_delete=models.PROTECT, related_name='+')
     valor_objetivo = models.PositiveSmallIntegerField(
         null=True, blank=True, validators=[MinValueValidator(ESCALA_MIN), MaxValueValidator(ESCALA_MAX)],
     )
     texto_aberto = models.TextField(blank=True)
-    feedback_ia = models.JSONField(null=True, blank=True)
-    tentativas_ia = models.PositiveSmallIntegerField(default=0)
+    feedback_ia = models.JSONField('feedback da IA', null=True, blank=True)
+    tentativas_ia = models.PositiveSmallIntegerField('tentativas da IA', default=0)
 
     class Meta:
         constraints = [
@@ -91,10 +101,16 @@ class RecomendacaoAvaliacao(models.Model):
     """Uma das recomendações do catálogo escolhidas para o plano de ação da avaliação (RF10)."""
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    avaliacao = models.ForeignKey(Avaliacao, on_delete=models.CASCADE, related_name='recomendacoes')
-    recomendacao = models.ForeignKey(Recomendacao, on_delete=models.PROTECT, related_name='+')
-    posicao = models.PositiveSmallIntegerField(help_text='1 é a mais importante.')
-    nota_dimensao = models.FloatField(help_text='Nota da dimensão que fez a recomendação ser escolhida.')
+    avaliacao = models.ForeignKey(
+        Avaliacao, on_delete=models.CASCADE, related_name='recomendacoes', verbose_name='avaliação',
+    )
+    recomendacao = models.ForeignKey(
+        Recomendacao, on_delete=models.PROTECT, related_name='+', verbose_name='recomendação',
+    )
+    posicao = models.PositiveSmallIntegerField('posição', help_text='1 é a mais importante.')
+    nota_dimensao = models.FloatField(
+        'nota da dimensão', help_text='Nota da dimensão que fez a recomendação ser escolhida.',
+    )
 
     class Meta:
         ordering = ['posicao']
